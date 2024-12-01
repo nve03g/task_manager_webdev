@@ -1,0 +1,26 @@
+user
+- username
+- password
+
+project
+- project title
+
+task
+- taskname
+- status (dringend, compleet …)
+
+
+--------------------------------------------------------------------------
+
+verhaaltje:
+
+alle users in de task manager kunnen een project aanmaken
+wie een project aanmaakt heeft daarin automatisch de "admin" rol
+elke admin binnen een project kan:
+	andere users aan het project toevoegen, en per user selecteren of deze een "admin" of "general" rol hebben binnen het project
+	taken toevoegen, verwijderen, wijzigen, de status van de taak veranderen en users toewijzen aan een taak
+elke "general" user binnen een project kan taken (status) aanpassen waaraan die is toegewezen door een admin
+je kan een taakloos project hebben, maar geen projectloze taken
+elke taak hoort tot exact één project
+een taak kan toegewezen zijn aan meerdere users, maar altijd minstens één
+een project bestaat uit minstens één user
