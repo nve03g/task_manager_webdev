@@ -1,17 +1,3 @@
-user
-- username
-- password
-
-project
-- project title
-
-task
-- taskname
-- status (dringend, compleet …)
-
-
---------------------------------------------------------------------------
-
 verhaaltje:
 
 alle users in de task manager kunnen een project aanmaken
