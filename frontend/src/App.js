@@ -1,3 +1,5 @@
+// to run this file: npm start
+
 import logo from './logo.svg';
 import './App.css';
 
