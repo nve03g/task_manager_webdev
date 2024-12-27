@@ -1,39 +1,38 @@
 // to run this file: node server.js
 
 const express = require('express');
+const sqlite3 = require('sqlite3').verbose();
+const cors = require('cors');
+
 const app = express();
 const port = 3001;
 
-app.get('/', (req, res) => {
-    res.send('Hello from the backend!');
+// middleware
+app.use(cors());
+app.use(express.json());
+
+// database connection
+const db = new sqlite3.Database('database_copy.db', sqlite3.OPEN_READWRITE, (err) => {
+    if (err) {
+        console.error('Error connecting to database:', err.message);
+    } else {
+        console.log('Connected to database.');
+    }
+});
+
+// API endpoint to get all users
+app.get('/users', (req, res) => {
+    const query = 'SELECT userID, username, password FROM User';
+    db.all(query, [], (err, rows) => {
+        if (err) {
+            console.error(err.message);
+            res.status(500).json({error: 'Failed to fetch users'});
+        } else {
+            res.json(rows)
+        }
+    });
 });
 
 app.listen(port, () => {
     console.log(`Backend running at http://localhost:${port}`);
 });
-
-
-// ------------------------------------------------------
-
-
-// // was hiervoor dit:
-// const express = require('express');
-// const mongoose = require('mongoose');
-// const bodyParser = require('body-parser');
-// require('dotenv').config();
-// const sequelize = require('./config/db');
-// const userRoutes = require('./routes/userRoutes');
-
-// const app = express();
-
-// // Middleware
-// app.use(bodyParser.json());
-
-// // Routes
-// app.use('/api/users', userRoutes);
-
-// // Database connection
-// sequelize.sync().then(() => {
-//     console.log('Database connected!');
-//     app.listen(process.env.PORT || 5000, () => console.log('Server running on port 5000'));
-// }).catch((err) => console.error('Error connecting to database:', err));
