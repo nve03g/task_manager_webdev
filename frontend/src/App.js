@@ -10,7 +10,7 @@ function UserTable(){
 
   // fetch data from the backend
   useEffect(() => {
-    fetch('http://localhost:3001/users')
+    fetch('https://localhost:443/users')
       .then((response) => response.json())
       .then((data) => setUsers(data))
       .catch((error) => console.error('Error fetching users:', error));
