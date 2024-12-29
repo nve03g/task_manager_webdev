@@ -20,7 +20,7 @@ app.use((req, res, next) => { // verkeer naar HTTPS forceren
 });
 
 // database connection
-const db = new sqlite3.Database('database_copy.db', sqlite3.OPEN_READWRITE, (err) => {
+const db = new sqlite3.Database('database.db', sqlite3.OPEN_READWRITE, (err) => { // user: Luc - another_password
     if (err) {
         console.error('Error connecting to database:', err.message);
     } else {
