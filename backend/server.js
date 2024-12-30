@@ -102,7 +102,7 @@ app.post('/login', async (req, res) => { // use async function for handling data
         // find user in database
         const query = 'SELECT * FROM User WHERE username = ?';
         const user = await new Promise((resolve, reject) => {
-            db.get(query, [username], (err, row) => {
+            db.get(query, [username], (err, row) => { // use parametrized statement to prevent SQL injection
                 if (err) reject(err); // reject the promise on error
                 resolve(row); // fulfill the promise with data
             });
@@ -163,6 +163,48 @@ app.post('/logout', (req, res) => { // no need to use async function, because no
         return res.status(200).json({ message: 'Logout successful.' });
     } else {
         return res.status(400).json({ error: 'Invalid token.' });
+    }
+});
+
+// API endpoint to sign up new user
+app.post('/signup', async (req, res) => {
+    const {username, password} = req.body;
+
+    if (!username || !password) {
+        res.status(400).json({ error: 'Username and password are required.' });
+    }
+
+    try {
+        // check if user already exists
+        const existingUser = await new Promise((resolve, reject) => {
+            const query = 'SELECT * FROM User WHERE username = ?';
+            db.get(query, [username], (err, row) => {
+                if (err) reject(err);
+                resolve(row);
+            });
+        });
+
+        if (existingUser) {
+            return res.status(400).json({ error: 'Username already exists.' });
+        }
+
+        // hash the password
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // insert new user into database
+        await new Promise((resolve, reject) => {
+            const query = 'INSERT INTO User (username, password) VALUES (?,?)';
+            db.run(query, [username,hashedPassword], function(err) {
+                if (err) reject(err);
+                resolve();
+            });
+        });
+
+        // respond with success message
+        res.status(201).json({ message: 'User created successfully.'});
+    } catch (error) {
+        console.error('Error during signup:', error.message);
+        res.status(500).json({ error: 'Internal server error.' });
     }
 });
 
