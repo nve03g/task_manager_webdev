@@ -54,7 +54,7 @@ const checkTokenBlacklist = async (req, res, next) => { // middleware to check t
 
         // decode the token to retrieve user details
         const decoded = jwt.verify(token, JWT_SECRET_KEY);
-        req.user = {id: decoded.id, username: decoded.username}; // attach user info to the request object
+        req.user = { id: decoded.id, username: decoded.username }; // attach user info to the request object
 
         next(); // proceed if the token is valid
     } catch (err) {
@@ -213,7 +213,7 @@ app.post('/signup', async (req, res) => {
     }
 });
 
-// API endpoint to make new project (user authorized)
+// API endpoint to make new project
 app.post('/projects', async (req, res) => {
     const { title } = req.body;
     const userID = req.user.id; // extracted from the token via middleware
@@ -273,7 +273,73 @@ app.post('/projects', async (req, res) => {
 
         res.status(500).json({ error: 'Internal server error.' });
     }
-})
+});
+
+// API endpoint to assign a user to a project
+app.post('/projects/:projectId/assign-user', async (req, res) => {
+    const { projectId } = req.params;
+    const { userId, role } = req.body;
+    const requestingUserId = req.user.id; // user attached to request by middleware
+
+    // validate inputs
+    if (!projectId || !userId || !role) {
+        return res.status(400).json({ error: 'Project ID, user ID and role are required.' });
+    }
+    if (!['admin', 'general'].includes(role)) {
+        return res.status(400).json({ error: 'Role must be either "admin" or "general".' });
+    }
+
+    try {
+        // verify that the requesting user is an admin in the project
+        const isAdminQuery = `SELECT role FROM Project_User WHERE projectID = ? AND userID = ? AND role = 'admin'`;
+        const isAdmin = await new Promise((resolve, reject) => {
+            db.get(isAdminQuery, [projectId, requestingUserId], (err, row) => {
+                if (err) reject(err);
+                resolve(row ? true : false);
+            });
+        });
+
+        if (!isAdmin) {
+            return res.status(403).json({ error: 'Only administrators can assign users to this project.' });
+        }
+
+        // check if user is already assigned to project
+        const checkUserQuery = `SELECT * FROM Project_User WHERE projectID = ? AND userID = ?`;
+        const existingAssignment = await new Promise((resolve, reject) => {
+            db.get(checkUserQuery, [projectId, userId], (err, row) => {
+                if (err) reject(err);
+                resolve(row);
+            });
+        });
+
+        if (existingAssignment) { // user already assigned
+            // update user role
+            const updateRoleQuery = `UPDATE Project_User SET role = ? WHERE projectID = ? AND userID = ?`;
+            await new Promise((resolve, reject) => {
+                db.run(updateRoleQuery, [role, projectId, userId], (err) => {
+                    if (err) reject(err);
+                    resolve();
+                });
+            });
+
+            return res.status(200).json({message: 'User role updated successfully.'});
+        } else { // user is not yet assigned
+            // insert new assigned user
+            const insertQuery = `INSERT INTO Project_User (projectID, userID, role) VALUES (?,?,?)`;
+            await new Promise((resolve, reject)=>{
+                db.run(insertQuery, [projectId, userId, role], (err)=>{
+                    if (err) reject(err);
+                    resolve();
+                });
+            });
+
+            return res.status(201).json({message: 'User assigned to project successfully.'});
+        }
+    } catch (error) {
+        console.error('Error assigning user to project:', error.message);
+        res.status(500).json({error: 'Internal server error.'});
+    }
+});
 
 // load SSL-certificate files
 const options = {
