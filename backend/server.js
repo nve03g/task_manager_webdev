@@ -51,10 +51,15 @@ const checkTokenBlacklist = async (req, res, next) => { // middleware to check t
         if (isBlacklisted === 'blacklisted') {
             return res.status(401).json({ error: 'Token is blacklisted. Please log in again.' });
         }
+
+        // decode the token to retrieve user details
+        const decoded = jwt.verify(token, JWT_SECRET_KEY);
+        req.user = {id: decoded.id, username: decoded.username}; // attach user info to the request object
+
         next(); // proceed if the token is valid
     } catch (err) {
-        console.error('Redis error in middleware:', err);
-        res.status(500).json({ error: 'Internal server error.' });
+        console.error('Token verification failed:', err.message);
+        res.status(401).json({ error: 'Invalid token.' });
     }
 };
 
@@ -168,7 +173,7 @@ app.post('/logout', (req, res) => { // no need to use async function, because no
 
 // API endpoint to sign up new user
 app.post('/signup', async (req, res) => {
-    const {username, password} = req.body;
+    const { username, password } = req.body;
 
     if (!username || !password) {
         res.status(400).json({ error: 'Username and password are required.' });
@@ -194,19 +199,81 @@ app.post('/signup', async (req, res) => {
         // insert new user into database
         await new Promise((resolve, reject) => {
             const query = 'INSERT INTO User (username, password) VALUES (?,?)';
-            db.run(query, [username,hashedPassword], function(err) {
+            db.run(query, [username, hashedPassword], function (err) {
                 if (err) reject(err);
                 resolve();
             });
         });
 
         // respond with success message
-        res.status(201).json({ message: 'User created successfully.'});
+        res.status(201).json({ message: 'User created successfully.' });
     } catch (error) {
         console.error('Error during signup:', error.message);
         res.status(500).json({ error: 'Internal server error.' });
     }
 });
+
+// API endpoint to make new project (user authorized)
+app.post('/projects', async (req, res) => {
+    const { title } = req.body;
+    const userID = req.user.id; // extracted from the token via middleware
+
+    // validate input
+    if (!title) {
+        return res.status(400).json({ error: 'Project title is required.' });
+    }
+
+    try {
+        // start transaction
+        // a transaction is a sequence of one or more database operations that are executed as a single unit => either all operations within the transaction are completed or none of them are applied (transaction rollback)
+        await new Promise((resolve, reject) => {
+            db.run('BEGIN TRANSACTION;', (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+
+        // insert new project into Project table
+        const projectID = await new Promise((resolve, reject) => {
+            const query = 'INSERT INTO Project (title) VALUES (?)';
+            db.run(query, [title], function (err) {
+                if (err) reject(err);
+                else resolve(this.lastID); // get new project ID
+            });
+        });
+
+        // link project to its creator in the Project_User table
+        await new Promise((resolve, reject) => {
+            const query = 'INSERT INTO Project_User (projectID, userID, role) VALUES (?, ?, ?)';
+            db.run(query, [projectID, userID, 'admin'], (err) => { // set project creator to 'admin' role
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+
+        // commit transaction
+        await new Promise((resolve, reject) => {
+            db.run('COMMIT;', (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+
+        res.status(201).json({ message: 'Project created successfully.', projectID });
+    } catch (error) {
+        console.error('Error creating project:', error.message);
+
+        // rollback transaction on failure
+        await new Promise((resolve, reject) => {
+            db.run('ROLLBACK;', (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+
+        res.status(500).json({ error: 'Internal server error.' });
+    }
+})
 
 // load SSL-certificate files
 const options = {
