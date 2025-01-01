@@ -395,6 +395,29 @@ app.post('/projects/:projectId/tasks', async (req, res) => {
             });
         });
 
+        // check and add assigned users to the project if necessary
+        const ensureUsersAddedToProject = assignedUserIds.map((assignedUserId) => {
+            return new Promise((resolve, reject) => {
+                const checkQuery = 'SELECT * FROM Project_User WHERE projectID = ? AND userID = ?';
+                db.get(checkQuery, [projectId, assignedUserId], (err, row) => {
+                    if (err) return reject(err);
+
+                    if (!row) {
+                        // if user is not yet assigned to project, add the user to the project as 'general'
+                        const addQuery = 'INSERT INTO Project_User (projectID, userID, role) VALUES (?, ?, ?)';
+                        db.run(addQuery, [projectId, assignedUserId, 'general'], (err) => {
+                            if (err) return reject(err);
+                            resolve();
+                        });
+                    } else {
+                        resolve(); // user is already in the project
+                    }
+                });
+            });
+        });
+
+        await Promise.all(ensureUsersAddedToProject);
+
         // assign user(s) to the new task
         const assignPromises = assignedUserIds.map((assignedUserId) => {
             return new Promise((resolve, reject) => {
