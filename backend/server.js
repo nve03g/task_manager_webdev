@@ -525,6 +525,63 @@ app.post('/projects/:projectId/tasks/:taskId/status', async (req, res) => {
     }
 });
 
+// API endpoint to delete task from project
+app.delete('/projects/:projectId/tasks/:taskId', async (req, res) => {
+    const { projectId, taskId } = req.params;
+    const requestingUserId = req.user.id; // user attached to request by middleware
+
+    try {
+        // check if the task exists in the project
+        const taskBelongsToProjectQuery = `SELECT * FROM Task WHERE taskID = ? AND projectID = ?`;
+        const task = await new Promise((resolve, reject) => {
+            db.get(taskBelongsToProjectQuery, [taskId, projectId], (err, row) => {
+                if (err) reject(err);
+                resolve(row);
+            });
+        });
+
+        if (!task) {
+            return res.status(404).json({ error: 'Task not found in this project.' });
+        }
+
+        // check if the user is an admin in the project
+        const isAdminQuery = `SELECT role FROM Project_User WHERE projectID = ? AND userID = ? AND role = 'admin'`;
+        const isAdmin = await new Promise((resolve, reject) => {
+            db.get(isAdminQuery, [projectId, requestingUserId], (err, row) => {
+                if (err) reject(err);
+                resolve(!!row);
+            });
+        });
+
+        if (!isAdmin) {
+            return res.status(403).json({ error: 'Only administrators can delete tasks.' });
+        }
+
+        // delete task from database
+        const deleteTaskQuery = `DELETE FROM Task WHERE taskID = ?`;
+        await new Promise((resolve, reject) => {
+            db.run(deleteTaskQuery, [taskId], (err) => {
+                if (err) reject(err);
+                resolve();
+            });
+        });
+
+        // delete associated Task_User bonds
+        const deleteTaskUserAssociationsQuery = `DELETE FROM Task_User WHERE taskID = ?`;
+        await new Promise((resolve, reject) => {
+            db.run(deleteTaskUserAssociationsQuery, [taskId], (err) => {
+                if (err) reject(err);
+                resolve();
+            });
+        });
+
+        res.status(200).json({ message: 'Task deleted successfully.' });
+    } catch (error) {
+        console.error('Error deleting task:', error.message);
+        res.status(500).json({ error: 'Internal server error.' });
+    }
+});
+
 // load SSL-certificate files
 const options = {
     key: fs.readFileSync('../private-key.pem'), // private key
