@@ -453,78 +453,6 @@ app.post('/projects/:projectId/tasks', async (req, res) => {
     }
 });
 
-// API endpoint to update task status
-app.post('/projects/:projectId/tasks/:taskId/status', async (req, res) => {
-    const { projectId, taskId } = req.params;
-    const { newStatus } = req.body;
-    const currentUserId = req.user.id;
-
-    // validate input
-    if (!newStatus) {
-        return res.status(400).json({ error: 'Task status is required.' });
-    }
-
-    // check if status is valid
-    const validStatuses = ['pending', 'in progress', 'completed']; // CHECK THIS: welke statussen gaan we toelaten?
-    if (!validStatuses.includes(newStatus)) {
-        return res.status(400).json({ error: 'Invalid task status.' });
-    }
-
-    try {
-        // check if the task exists in the project
-        const taskQuery = `SELECT * FROM Task WHERE taskID = ? AND projectID = ?`;
-        const task = await new Promise((resolve, reject) => {
-            db.get(taskQuery, [taskId, projectId], (err, row) => {
-                if (err) reject(err);
-                resolve(row);
-            });
-        });
-
-        if (!task) {
-            return res.status(404).json({ error: 'Task not found or does not belong to the specified project.' });
-        }
-
-        // check if the user is assigned to the task
-        const assignedQuery = `SELECT * FROM Task_User WHERE taskID = ? AND userID = ?`;
-        const isAssigned = await new Promise((resolve, reject) => {
-            db.get(assignedQuery, [taskId, currentUserId], (err, row) => {
-                if (err) reject(err);
-                resolve(!!row);
-            });
-        });
-
-        // check if the user is admin in the project
-        const adminQuery = `SELECT * FROM Project_User WHERE projectID = ? AND userID = ? AND role = 'admin'`;
-        const isAdmin = await new Promise((resolve, reject) => {
-            db.get(adminQuery, [projectId, currentUserId], (err, row) => {
-                if (err) reject(err);
-                resolve(!!row);
-            });
-        });
-
-        // check if user has permission to change task's status (only if 'admin' or assigned 'general')
-        if (!isAssigned && !isAdmin) { // => unassigned 'general' users
-            return res.status(403).json({
-                error: 'You do not have permission to update the status of this task.',
-            });
-        }
-
-        // update the task status
-        const updateQuery = `UPDATE Task SET status = ? WHERE taskID = ?`;
-        await new Promise((resolve, reject) => {
-            db.run(updateQuery, [newStatus, taskId], (err) => {
-                if (err) reject(err);
-                resolve();
-            });
-        });
-
-        res.status(200).json({ message: 'Task status updates successfully.' });
-    } catch (error) {
-        console.error('Error updating task status:', error.message);
-        res.status(500).json({ error: 'Internal server error.' });
-    }
-});
-
 // API endpoint to delete task from project
 app.delete('/projects/:projectId/tasks/:taskId', async (req, res) => {
     const { projectId, taskId } = req.params;
@@ -578,6 +506,76 @@ app.delete('/projects/:projectId/tasks/:taskId', async (req, res) => {
         res.status(200).json({ message: 'Task deleted successfully.' });
     } catch (error) {
         console.error('Error deleting task:', error.message);
+        res.status(500).json({ error: 'Internal server error.' });
+    }
+});
+
+// API endpoint to edit/update task details (name, status)
+app.put('/projects/:projectId/tasks/:taskId', async (req, res) => {
+    const { projectId, taskId } = req.params;
+    const { name, status } = req.body;
+    const requestingUserId = req.user.id; // user attached to request by middleware
+
+    // validate input
+    if (!name && !status) {
+        return res.status(400).json({ error: 'At least one field must be provided to update task.' });
+    }
+
+    try {
+        // check if the task exists in the project
+        const taskQuery = `SELECT * FROM Task WHERE taskID = ? AND projectID = ?`;
+        const task = await new Promise((resolve, reject) => {
+            db.get(taskQuery, [taskId, projectId], (err, row) => {
+                if (err) reject(err);
+                resolve(row);
+            });
+        });
+
+        if (!task) {
+            return res.status(404).json({ error: 'Task not found in this project.' });
+        }
+
+        // check if the user is an admin in the project
+        const isAdminQuery = `SELECT role FROM Project_User WHERE projectID = ? AND userID = ? AND role = 'admin'`;
+        const isAdmin = await new Promise((resolve, reject) => {
+            db.get(isAdminQuery, [projectId, requestingUserId], (err, row) => {
+                if (err) reject(err);
+                resolve(!!row);
+            });
+        });
+
+        if (!isAdmin) {
+            return res.status(403).json({ error: 'Only administrators can update tasks.' });
+        }
+
+        // build update query dynamically, based on provided fields
+        const fieldsToUpdate = [];
+        const values = [];
+        if (name) {
+            fieldsToUpdate.push('name = ?');
+            values.push(name);
+        }
+        if (status) {
+            const validStatuses = ['pending', 'in progress', 'completed']; // CHECK THIS: welke statussen?
+            if (!validStatuses.includes(status)) {
+                return res.status(400).json({ error: 'Invalid task status.' });
+            }
+            fieldsToUpdate.push('status = ?');
+            values.push(status);
+        }
+        values.push(taskId);
+
+        const updateQuery = `UPDATE Task SET ${fieldsToUpdate.join(', ')} WHERE taskID = ?`;
+        await new Promise((resolve, reject) => {
+            db.run(updateQuery, values, (err) => {
+                if (err) reject(err);
+                resolve();
+            });
+        });
+
+        res.status(200).json({ message: 'Task updated successfully.' });
+    } catch (error) {
+        console.error('Error updating task:', error.message);
         res.status(500).json({ error: 'Internal server error.' });
     }
 });
