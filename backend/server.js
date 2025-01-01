@@ -544,8 +544,25 @@ app.put('/projects/:projectId/tasks/:taskId', async (req, res) => {
             });
         });
 
-        if (!isAdmin) {
-            return res.status(403).json({ error: 'Only administrators can update tasks.' });
+        // check if the user is assigned to the task
+        const isAssignedQuery = `SELECT * FROM Task_User WHERE taskID = ? AND userID = ?`;
+        const isAssigned = await new Promise((resolve, reject) => {
+            db.get(isAssignedQuery, [taskId, requestingUserId], (err, row) => {
+                if (err) reject(err);
+                resolve(!!row);
+            });
+        });
+
+        // authorization: only admins or assigned users can update the task
+        if (!isAdmin && !(isAssigned && status && !name)) {
+            return res.status(403).json({
+                error: 'Only administrators or assigned users can update the task. Assigned users can only update the status.',
+            });
+        }
+
+        // if a non-admin user tries to update the name, reject the request
+        if (!isAdmin && name) {
+            return res.status(403).json({ error: 'Only administrators can update task name.' });
         }
 
         // build update query dynamically, based on provided fields
