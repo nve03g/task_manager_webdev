@@ -313,7 +313,7 @@ app.post('/projects/:projectId/assign-user', async (req, res) => {
         });
 
         if (existingAssignment) { // user already assigned
-            // update user role
+            // update user role - CHANGE THIS, users should not be able to change their own roles within a project, and maybe we could consider not allowing to update user roles at all (think about it)
             const updateRoleQuery = `UPDATE Project_User SET role = ? WHERE projectID = ? AND userID = ?`;
             await new Promise((resolve, reject) => {
                 db.run(updateRoleQuery, [role, projectId, userId], (err) => {
@@ -322,22 +322,168 @@ app.post('/projects/:projectId/assign-user', async (req, res) => {
                 });
             });
 
-            return res.status(200).json({message: 'User role updated successfully.'});
+            return res.status(200).json({ message: 'User role updated successfully.' });
         } else { // user is not yet assigned
             // insert new assigned user
             const insertQuery = `INSERT INTO Project_User (projectID, userID, role) VALUES (?,?,?)`;
-            await new Promise((resolve, reject)=>{
-                db.run(insertQuery, [projectId, userId, role], (err)=>{
+            await new Promise((resolve, reject) => {
+                db.run(insertQuery, [projectId, userId, role], (err) => {
                     if (err) reject(err);
                     resolve();
                 });
             });
 
-            return res.status(201).json({message: 'User assigned to project successfully.'});
+            return res.status(201).json({ message: 'User assigned to project successfully.' });
         }
     } catch (error) {
         console.error('Error assigning user to project:', error.message);
-        res.status(500).json({error: 'Internal server error.'});
+        res.status(500).json({ error: 'Internal server error.' });
+    }
+});
+
+// API endpoint to add a task to a project
+app.post('/projects/:projectId/tasks', async (req, res) => {
+    const { projectId } = req.params;
+    const { name, status, assignedUserIds } = req.body;
+    const token = req.headers.authorization?.split(' ')[1];
+    const decodedToken = jwt.verify(token, JWT_SECRET_KEY);
+    const currentUserId = decodedToken.id;
+
+    // validate input
+    if (!name || !status) {
+        return res.status(400).json({ error: 'Task name and status are required.' });
+    }
+
+    // validate assigned user(s)
+    if (!assignedUserIds || !Array.isArray(assignedUserIds) || assignedUserIds.length === 0) {
+        return res.status(400).json({ error: 'At least one user must be assigned to the task.' });
+    }
+
+    try {
+        // check if the project exists
+        const projectExists = await new Promise((resolve, reject) => {
+            const query = 'SELECT * FROM Project WHERE projectID = ?';
+            db.get(query, [projectId], (err, row) => {
+                if (err) reject(err);
+                resolve(!!row); // '!!': force to boolean value
+            });
+        });
+
+        if (!projectExists) {
+            return res.status(404).json({ error: 'Project not found.' });
+        }
+
+        // check if current user is an admin in the project
+        const isAdmin = await new Promise((resolve, reject) => {
+            const query = 'SELECT role FROM Project_User WHERE projectID = ? AND userID = ? AND role = ?';
+            db.get(query, [projectId, currentUserId, 'admin'], (err, row) => {
+                if (err) reject(err);
+                resolve(!!row);
+            });
+        });
+
+        if (!isAdmin) {
+            return res.status(403).json({ error: 'You must be an administrator in this project to add tasks.' });
+        }
+
+        // insert the task into the database
+        const newTaskId = await new Promise((resolve, reject) => {
+            const query = 'INSERT INTO Task (name, status, projectID) VALUES (?, ?, ?)';
+            db.run(query, [name, status, projectId], function (err) {
+                if (err) reject(err);
+                resolve(this.lastID); // get the ID of the newly created task
+            });
+        });
+
+        // assign user(s) to the new task
+        const assignPromises = assignedUserIds.map((assignedUserId) => {
+            return new Promise((resolve, reject) => {
+                const query = 'INSERT INTO Task_User (taskID, userID) VALUES (?,?)';
+                db.run(query, [newTaskId, assignedUserId], (err) => {
+                    if (err) reject(err);
+                    resolve();
+                });
+            });
+        });
+
+        await Promise.all(assignPromises);
+
+        res.status(201).json({ message: 'Task created successfully.', taskId: newTaskId });
+    } catch (error) {
+        console.error('Error adding task:', error.message);
+        res.status(500).json({ error: 'Internal server error.' });
+    }
+});
+
+// API endpoint to update task status
+app.post('/projects/:projectId/tasks/:taskId/status', async (req, res) => {
+    const { projectId, taskId } = req.params;
+    const { newStatus } = req.body;
+    const currentUserId = req.user.id;
+
+    // validate input
+    if (!newStatus) {
+        return res.status(400).json({ error: 'Task status is required.' });
+    }
+
+    // check if status is valid
+    const validStatuses = ['pending', 'in progress', 'completed']; // CHECK THIS: welke statussen gaan we toelaten?
+    if (!validStatuses.includes(newStatus)) {
+        return res.status(400).json({ error: 'Invalid task status.' });
+    }
+
+    try {
+        // check if the task exists in the project
+        const taskQuery = `SELECT * FROM Task WHERE taskID = ? AND projectID = ?`;
+        const task = await new Promise((resolve, reject) => {
+            db.get(taskQuery, [taskId, projectId], (err, row) => {
+                if (err) reject(err);
+                resolve(row);
+            });
+        });
+
+        if (!task) {
+            return res.status(404).json({ error: 'Task not found or does not belong to the specified project.' });
+        }
+
+        // check if the user is assigned to the task
+        const assignedQuery = `SELECT * FROM Task_User WHERE taskID = ? AND userID = ?`;
+        const isAssigned = await new Promise((resolve, reject) => {
+            db.get(assignedQuery, [taskId, currentUserId], (err, row) => {
+                if (err) reject(err);
+                resolve(!!row);
+            });
+        });
+
+        // check if the user is admin in the project
+        const adminQuery = `SELECT * FROM Project_User WHERE projectID = ? AND userID = ? AND role = 'admin'`;
+        const isAdmin = await new Promise((resolve, reject) => {
+            db.get(adminQuery, [projectId, currentUserId], (err, row) => {
+                if (err) reject(err);
+                resolve(!!row);
+            });
+        });
+
+        // check if user has permission to change task's status (only if 'admin' or assigned 'general')
+        if (!isAssigned && !isAdmin) { // => unassigned 'general' users
+            return res.status(403).json({
+                error: 'You do not have permission to update the status of this task.',
+            });
+        }
+
+        // update the task status
+        const updateQuery = `UPDATE Task SET status = ? WHERE taskID = ?`;
+        await new Promise((resolve, reject) => {
+            db.run(updateQuery, [newStatus, taskId], (err) => {
+                if (err) reject(err);
+                resolve();
+            });
+        });
+
+        res.status(200).json({ message: 'Task status updates successfully.' });
+    } catch (error) {
+        console.error('Error updating task status:', error.message);
+        res.status(500).json({ error: 'Internal server error.' });
     }
 });
 
