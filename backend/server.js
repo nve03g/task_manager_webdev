@@ -313,7 +313,22 @@ app.post('/projects/:projectId/assign-user', async (req, res) => {
         });
 
         if (existingAssignment) { // user already assigned
-            // update user role - CHANGE THIS, users should not be able to change their own roles within a project, and maybe we could consider not allowing to update user roles at all (think about it)
+            // if the user is the last admin, prevent them from changing their role, because there must remain at least one admin per project
+            if (existingAssignment.role === 'admin' && role === 'general') {
+                const adminCountQuery = `SELECT COUNT(*) AS adminCount FROM Project_User WHERE projectID = ? AND role = 'admin'`;
+                const adminCount = await new Promise((resolve, reject) => {
+                    db.get(adminCountQuery, [projectId], (err, row) => {
+                        if (err) reject(err);
+                        resolve(row.adminCount);
+                    });
+                });
+
+                if (adminCount === 1) {
+                    return res.status(400).json({ error: 'Project needs at least one administrator. Assign another administrator before continuing.' });
+                }
+            }
+
+            // update user role
             const updateRoleQuery = `UPDATE Project_User SET role = ? WHERE projectID = ? AND userID = ?`;
             await new Promise((resolve, reject) => {
                 db.run(updateRoleQuery, [role, projectId, userId], (err) => {
