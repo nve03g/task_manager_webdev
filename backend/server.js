@@ -213,14 +213,17 @@ app.post('/signup', async (req, res) => {
     }
 });
 
-// API endpoint to make new project
+// API endpoint to make new project, while also assigning users and their roles
 app.post('/projects', async (req, res) => {
-    const { title } = req.body;
-    const userID = req.user.id; // extracted from the token via middleware
+    const { title, users } = req.body; // `users` is an array of objects: { userId, role }
+    const creatorId = req.user.id; // extracted from token via middleware
 
     // validate input
     if (!title) {
         return res.status(400).json({ error: 'Project title is required.' });
+    }
+    if (users && !Array.isArray(users)) {
+        return res.status(400).json({ error: 'Users must be an array.' });
     }
 
     try {
@@ -233,8 +236,8 @@ app.post('/projects', async (req, res) => {
             });
         });
 
-        // insert new project into Project table
-        const projectID = await new Promise((resolve, reject) => {
+        // insert new project
+        const projectId = await new Promise((resolve, reject) => {
             const query = 'INSERT INTO Project (title) VALUES (?)';
             db.run(query, [title], function (err) {
                 if (err) reject(err);
@@ -242,14 +245,32 @@ app.post('/projects', async (req, res) => {
             });
         });
 
-        // link project to its creator in the Project_User table
+        // assign the creator as an admin
         await new Promise((resolve, reject) => {
             const query = 'INSERT INTO Project_User (projectID, userID, role) VALUES (?, ?, ?)';
-            db.run(query, [projectID, userID, 'admin'], (err) => { // set project creator to 'admin' role
+            db.run(query, [projectId, creatorId, 'admin'], (err) => {
                 if (err) reject(err);
                 else resolve();
             });
         });
+
+        // assign additional users if provided
+        if (users) {
+            for (const { userId, role } of users) {
+                // validate role
+                if (!['admin', 'general'].includes(role)) {
+                    throw new Error(`Invalid role for user ${userId}.`);
+                }
+
+                await new Promise((resolve, reject) => {
+                    const query = 'INSERT INTO Project_User (projectID, userID, role) VALUES (?, ?, ?)';
+                    db.run(query, [projectId, userId, role], (err) => {
+                        if (err) reject(err);
+                        else resolve();
+                    });
+                });
+            }
+        }
 
         // commit transaction
         await new Promise((resolve, reject) => {
@@ -259,7 +280,7 @@ app.post('/projects', async (req, res) => {
             });
         });
 
-        res.status(201).json({ message: 'Project created successfully.', projectID });
+        res.status(201).json({ message: 'Project created successfully.', projectId });
     } catch (error) {
         console.error('Error creating project:', error.message);
 

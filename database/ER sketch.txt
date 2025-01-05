@@ -10,7 +10,3 @@ je kan een taakloos project hebben, maar geen projectloze taken
 elke taak hoort tot exact één project
 een taak kan toegewezen zijn aan meerdere users, maar altijd minstens één (niet per se de creator van de taak)
 een project bestaat uit minstens één user
-
-
-
-!! change this in ER diagram: task heeft geen role nodig! enkel in project
