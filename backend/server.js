@@ -296,22 +296,22 @@ app.post('/projects', async (req, res) => {
     }
 });
 
-// API endpoint to assign a user to a project
-app.post('/projects/:projectId/assign-user', async (req, res) => {
+// API endpoint to edit/update project details (title, assigned users and their roles)
+app.put('/projects/:projectId', async (req, res) => {
     const { projectId } = req.params;
-    const { userId, role } = req.body;
-    const requestingUserId = req.user.id; // user attached to request by middleware
+    const { title, users } = req.body; // `users` is an array of objects: { userId, role }
+    const requestingUserId = req.user.id; // extracted from token via middleware
 
-    // validate inputs
-    if (!projectId || !userId || !role) {
-        return res.status(400).json({ error: 'Project ID, user ID and role are required.' });
+    // validate input
+    if (!title && !users) {
+        return res.status(400).json({ error: 'Either title or users must be provided for update.' });
     }
-    if (!['admin', 'general'].includes(role)) {
-        return res.status(400).json({ error: 'Role must be either "admin" or "general".' });
+    if (users && !Array.isArray(users)) {
+        return res.status(400).json({ error: 'Users must be an array.' });
     }
 
     try {
-        // verify that the requesting user is an admin in the project
+        // verify the requesting user is an admin in the project
         const isAdminQuery = `SELECT role FROM Project_User WHERE projectID = ? AND userID = ? AND role = 'admin'`;
         const isAdmin = await new Promise((resolve, reject) => {
             db.get(isAdminQuery, [projectId, requestingUserId], (err, row) => {
@@ -321,58 +321,102 @@ app.post('/projects/:projectId/assign-user', async (req, res) => {
         });
 
         if (!isAdmin) {
-            return res.status(403).json({ error: 'Only administrators can assign users to this project.' });
+            return res.status(403).json({ error: 'Only administrators can update project details.' });
         }
 
-        // check if user is already assigned to project
-        const checkUserQuery = `SELECT * FROM Project_User WHERE projectID = ? AND userID = ?`;
-        const existingAssignment = await new Promise((resolve, reject) => {
-            db.get(checkUserQuery, [projectId, userId], (err, row) => {
+        // start transaction
+        await new Promise((resolve, reject) => {
+            db.run('BEGIN TRANSACTION;', (err) => {
                 if (err) reject(err);
-                resolve(row);
+                else resolve();
             });
         });
 
-        if (existingAssignment) { // user already assigned
-            // if the user is the last admin, prevent them from changing their role, because there must remain at least one admin per project
-            if (existingAssignment.role === 'admin' && role === 'general') {
-                const adminCountQuery = `SELECT COUNT(*) AS adminCount FROM Project_User WHERE projectID = ? AND role = 'admin'`;
-                const adminCount = await new Promise((resolve, reject) => {
-                    db.get(adminCountQuery, [projectId], (err, row) => {
+        // update project title if provided
+        if (title) {
+            const updateTitleQuery = 'UPDATE Project SET title = ? WHERE projectID = ?';
+            await new Promise((resolve, reject) => {
+                db.run(updateTitleQuery, [title, projectId], (err) => {
+                    if (err) reject(err);
+                    else resolve();
+                });
+            });
+        }
+
+        // update users if provided
+        if (users) {
+            for (const { userId, role } of users) {
+                // validate role
+                if (!['admin', 'general'].includes(role)) {
+                    throw new Error(`Invalid role for user ${userId}.`);
+                }
+
+                // check if user is already assigned to the project
+                const checkUserQuery = `SELECT * FROM Project_User WHERE projectID = ? AND userID = ?`;
+                const existingUser = await new Promise((resolve, reject) => {
+                    db.get(checkUserQuery, [projectId, userId], (err, row) => {
                         if (err) reject(err);
-                        resolve(row.adminCount);
+                        resolve(row);
                     });
                 });
 
-                if (adminCount === 1) {
-                    return res.status(400).json({ error: 'Project needs at least one administrator. Assign another administrator before continuing.' });
+                if (existingUser) {
+                    // if the user is the last admin, prevent changing their role to general, because there must remain at least one admin per project
+                    if (existingUser.role === 'admin' && role === 'general') {
+                        const adminCountQuery = `SELECT COUNT(*) AS adminCount FROM Project_User WHERE projectID = ? AND role = 'admin'`;
+                        const adminCount = await new Promise((resolve, reject) => {
+                            db.get(adminCountQuery, [projectId], (err, row) => {
+                                if (err) reject(err);
+                                resolve(row.adminCount);
+                            });
+                        });
+
+                        if (adminCount === 1) {
+                            throw new Error('Project must have at least one administrator. Assign another administrator before changing this role.');
+                        }
+                    }
+
+                    // update the user's role
+                    const updateRoleQuery = `UPDATE Project_User SET role = ? WHERE projectID = ? AND userID = ?`;
+                    await new Promise((resolve, reject) => {
+                        db.run(updateRoleQuery, [role, projectId, userId], (err) => {
+                            if (err) reject(err);
+                            else resolve();
+                        });
+                    });
+                } else {
+                    // assign new user to the project
+                    const insertUserQuery = `INSERT INTO Project_User (projectID, userID, role) VALUES (?, ?, ?)`;
+                    await new Promise((resolve, reject) => {
+                        db.run(insertUserQuery, [projectId, userId, role], (err) => {
+                            if (err) reject(err);
+                            else resolve();
+                        });
+                    });
                 }
             }
-
-            // update user role
-            const updateRoleQuery = `UPDATE Project_User SET role = ? WHERE projectID = ? AND userID = ?`;
-            await new Promise((resolve, reject) => {
-                db.run(updateRoleQuery, [role, projectId, userId], (err) => {
-                    if (err) reject(err);
-                    resolve();
-                });
-            });
-
-            return res.status(200).json({ message: 'User role updated successfully.' });
-        } else { // user is not yet assigned
-            // insert new assigned user
-            const insertQuery = `INSERT INTO Project_User (projectID, userID, role) VALUES (?,?,?)`;
-            await new Promise((resolve, reject) => {
-                db.run(insertQuery, [projectId, userId, role], (err) => {
-                    if (err) reject(err);
-                    resolve();
-                });
-            });
-
-            return res.status(201).json({ message: 'User assigned to project successfully.' });
         }
+
+        // commit transaction
+        await new Promise((resolve, reject) => {
+            db.run('COMMIT;', (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+
+        res.status(200).json({ message: 'Project updated successfully.' });
     } catch (error) {
-        console.error('Error assigning user to project:', error.message);
+        console.error('Error updating project:', error.message);
+
+        // rollback transaction on failure
+        await new Promise((resolve, reject) => {
+            db.run('ROLLBACK;', (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+
         res.status(500).json({ error: 'Internal server error.' });
     }
 });
