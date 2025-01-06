@@ -81,9 +81,15 @@ const db = new sqlite3.Database('database.db', sqlite3.OPEN_READWRITE, (err) => 
     }
 });
 
+// helper function to format the date as DD/MM/YYYY (in database default YYYY-MM-DD)
+const formatDate = (isoDate) => {
+    const [year, month, day] = isoDate.split('-');
+    return `${day}/${month}/${year}`;
+};
+
 // API endpoint to get all users - DELETE LATER
 app.get('/users', (req, res) => {
-    const query = 'SELECT userID, username, password FROM User';
+    const query = 'SELECT * FROM User';
     db.all(query, [], (err, rows) => {
         if (err) {
             console.error(err.message);
@@ -126,8 +132,8 @@ app.post('/login', async (req, res) => { // use async function for handling data
         // generate token (JWT), used to securely transfer information over the web (ie. between client and server)
         const token = jwt.sign({ id: user.userID, username: user.username }, JWT_SECRET_KEY, { expiresIn: '1h' }); // JWT_SECRET_KEY can be found in the key_config.js file, because it should not be hard-coded in the backend for safety purposes
 
-        // respond with the token
-        res.status(200).json({ message: 'Login successful.', token });
+        // respond with the token and user data
+        res.status(200).json({ message: 'Login successful.', token, user });
     } catch (error) {
         console.error('Error during login:', error.message);
         res.status(500).json({ error: 'Internal server error.' });
@@ -280,7 +286,18 @@ app.post('/projects', async (req, res) => {
             });
         });
 
-        res.status(201).json({ message: 'Project created successfully.', projectId });
+        // fetch the created project to include the formatted creation date
+        const project = await new Promise((resolve, reject) => {
+            const query = `SELECT projectID, title, description, createdBy, strftime('%Y-%m-%d', creationDate) AS creationDate FROM Project WHERE projectID = ?`;
+            db.get(query, [projectId], (err, row) => {
+                if (err) reject(err);
+                resolve(row);
+            });
+        });
+
+        project.creationDate = formatDate(project.creationDate); // format the date
+
+        res.status(201).json({ message: 'Project created successfully.', project });
     } catch (error) {
         console.error('Error creating project:', error.message);
 
@@ -405,7 +422,23 @@ app.put('/projects/:projectId', async (req, res) => {
             });
         });
 
-        res.status(200).json({ message: 'Project updated successfully.' });
+        // fetch the updated project and include formatted creation date
+        const updatedProject = await new Promise((resolve, reject) => {
+            const query = `SELECT projectID, title, description, createdBy, strftime('%Y-%m-%d', creationDate) AS creationDate FROM Project WHERE projectID = ?`;
+            db.get(query, [projectId], (err, row) => {
+                if (err) reject(err);
+                resolve(row);
+            });
+        });
+
+        updatedProject.creationDate = formatDate(updatedProject.creationDate); // format the date
+
+        // send response with warnings (if they exist)
+        if (warnings.length > 0) {
+            return res.status(200).json({ message: 'Project updated with warnings.', warnings, updatedProject });
+        } else {
+            return res.status(200).json({ message: 'Project updated successfully.', updatedProject });
+        }
     } catch (error) {
         console.error('Error updating project:', error.message);
 
