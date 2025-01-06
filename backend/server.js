@@ -472,6 +472,96 @@ app.put('/projects/:projectId', async (req, res) => {
     }
 });
 
+// API endpoint to delete users from a project (except from original admin)
+app.delete('/projects/:projectId/users/:userId', async (req, res) => {
+    const { projectId, userId } = req.params;
+    const requestingUserId = req.user.id; // extracted from token via middleware
+
+    try {
+        // verify the requesting user is an admin in the project
+        const isAdminQuery = `SELECT role FROM Project_User WHERE projectID = ? AND userID = ? AND role = 'admin'`;
+        const isAdmin = await new Promise((resolve, reject) => {
+            db.get(isAdminQuery, [projectId, requestingUserId], (err, row) => {
+                if (err) reject(err);
+                resolve(row ? true : false);
+            });
+        });
+
+        if (!isAdmin) {
+            return res.status(403).json({ error: 'Only administrators can delete users from a project.' });
+        }
+
+        // fetch the `createdBy` user for the project
+        const createdByQuery = `SELECT createdBy FROM Project WHERE projectID = ?`;
+        const createdBy = await new Promise((resolve, reject) => {
+            db.get(createdByQuery, [projectId], (err, row) => {
+                if (err) reject(err);
+                resolve(row.createdBy);
+            });
+        });
+
+        // prevent deletion of the original admin
+        if (parseInt(userId, 10) === createdBy) {
+            return res.status(400).json({ error: 'Cannot delete the original admin of the project.' });
+        }
+
+        // check if the user is part of the project
+        const userExistsQuery = `SELECT * FROM Project_User WHERE projectID = ? AND userID = ?`;
+        const userExists = await new Promise((resolve, reject) => {
+            db.get(userExistsQuery, [projectId, userId], (err, row) => {
+                if (err) reject(err);
+                resolve(row);
+            });
+        });
+
+        if (!userExists) {
+            return res.status(404).json({ error: 'User is not part of this project.' });
+        }
+
+        // start transaction
+        await new Promise((resolve, reject) => {
+            db.run('BEGIN TRANSACTION;', (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+
+        // delete the user from the project
+        const deleteUserQuery = `DELETE FROM Project_User WHERE projectID = ? AND userID = ?`;
+        await new Promise((resolve, reject) => {
+            db.run(deleteUserQuery, [projectId, userId], (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+
+        // commit transaction
+        await new Promise((resolve, reject) => {
+            db.run('COMMIT;', (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+
+        res.status(200).json({ message: 'User deleted from project successfully.' });
+    } catch (error) {
+        console.error('Error deleting user from project:', error.message);
+
+        // rollback transaction on failure
+        await new Promise((resolve, reject) => {
+            db.run('ROLLBACK;', (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+
+        res.status(500).json({ error: 'Internal server error.' });
+    }
+});
+
+// API endpoint to delete a project and all its dependencies
+app.delete();
+
 // API endpoint to add a task to a project
 app.post('/projects/:projectId/tasks', async (req, res) => {
     const { projectId } = req.params;
