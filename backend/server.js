@@ -221,7 +221,7 @@ app.post('/signup', async (req, res) => {
 
 // API endpoint to make new project, while also assigning users and their roles
 app.post('/projects', async (req, res) => {
-    const { title, users } = req.body; // `users` is an array of objects: { userId, role }
+    const { title, description, users } = req.body; // `users` is an array of objects: { userId, role }
     const creatorId = req.user.id; // extracted from token via middleware
 
     // validate input
@@ -244,8 +244,8 @@ app.post('/projects', async (req, res) => {
 
         // insert new project
         const projectId = await new Promise((resolve, reject) => {
-            const query = 'INSERT INTO Project (title) VALUES (?)';
-            db.run(query, [title], function (err) {
+            const query = `INSERT INTO Project (title, description, createdBy, creationDate) VALUES (?, ?, ?, DATE('now'))`;
+            db.run(query, [title, description, creatorId], function (err) {
                 if (err) reject(err);
                 else resolve(this.lastID); // get new project ID
             });
@@ -316,12 +316,12 @@ app.post('/projects', async (req, res) => {
 // API endpoint to edit/update project details (title, assigned users and their roles)
 app.put('/projects/:projectId', async (req, res) => {
     const { projectId } = req.params;
-    const { title, users } = req.body; // `users` is an array of objects: { userId, role }
+    const { title, description, users } = req.body; // `users` is an array of objects: { userId, role }
     const requestingUserId = req.user.id; // extracted from token via middleware
 
     // validate input
-    if (!title && !users) {
-        return res.status(400).json({ error: 'Either title or users must be provided for update.' });
+    if (!title && !description && !users) {
+        return res.status(400).json({ error: 'Either title, description, or users must be provided for update.' });
     }
     if (users && !Array.isArray(users)) {
         return res.status(400).json({ error: 'Users must be an array.' });
@@ -340,6 +340,15 @@ app.put('/projects/:projectId', async (req, res) => {
         if (!isAdmin) {
             return res.status(403).json({ error: 'Only administrators can update project details.' });
         }
+
+        // fetch the `createdBy` user for the project (this user must remain admin in the project, and cannot change its role)
+        const createdByQuery = `SELECT createdBy FROM Project WHERE projectID = ?`;
+        const createdBy = await new Promise((resolve, reject) => {
+            db.get(createdByQuery, [projectId], (err, row) => {
+                if (err) reject(err);
+                resolve(row.createdBy);
+            });
+        });
 
         // start transaction
         await new Promise((resolve, reject) => {
@@ -360,56 +369,65 @@ app.put('/projects/:projectId', async (req, res) => {
             });
         }
 
+        // update project description if provided
+        if (description) {
+            const updateTitleQuery = 'UPDATE Project SET description = ? WHERE projectID = ?';
+            await new Promise((resolve, reject) => {
+                db.run(updateTitleQuery, [description, projectId], (err) => {
+                    if (err) reject(err);
+                    else resolve();
+                });
+            });
+        }
+
         // update users if provided
+        const warnings = [] // for collecting invalid operations warnings
         if (users) {
             for (const { userId, role } of users) {
-                // validate role
-                if (!['admin', 'general'].includes(role)) {
-                    throw new Error(`Invalid role for user ${userId}.`);
+                // prevent changes to the role of the original admin (`createdBy`)
+                if (userId === createdBy) {
+                    // console.log(`Skipping update for original admin userID: ${userId}`);
+                    warnings.push(`Cannot modify the role of the original admin (userID: ${userId}).`);
+                    continue; // skip any updates for this user (AKA the original admin)
                 }
 
-                // check if user is already assigned to the project
-                const checkUserQuery = `SELECT * FROM Project_User WHERE projectID = ? AND userID = ?`;
-                const existingUser = await new Promise((resolve, reject) => {
-                    db.get(checkUserQuery, [projectId, userId], (err, row) => {
-                        if (err) reject(err);
-                        resolve(row);
-                    });
-                });
+                // validate role
+                if (!['admin', 'general'].includes(role)) {
+                    warnings.push(`Invalid role for user ${userId}.`);
+                    continue; // skip this user but continue processing others
+                }
 
-                if (existingUser) {
-                    // if the user is the last admin, prevent changing their role to general, because there must remain at least one admin per project
-                    if (existingUser.role === 'admin' && role === 'general') {
-                        const adminCountQuery = `SELECT COUNT(*) AS adminCount FROM Project_User WHERE projectID = ? AND role = 'admin'`;
-                        const adminCount = await new Promise((resolve, reject) => {
-                            db.get(adminCountQuery, [projectId], (err, row) => {
+                try {
+                    // check if user is already assigned to the project
+                    const checkUserQuery = `SELECT * FROM Project_User WHERE projectID = ? AND userID = ?`;
+                    const existingUser = await new Promise((resolve, reject) => {
+                        db.get(checkUserQuery, [projectId, userId], (err, row) => {
+                            if (err) reject(err);
+                            resolve(row);
+                        });
+                    });
+
+                    if (existingUser) {
+                        // update the user's role
+                        const updateRoleQuery = `UPDATE Project_User SET role = ? WHERE projectID = ? AND userID = ?`;
+                        await new Promise((resolve, reject) => {
+                            db.run(updateRoleQuery, [role, projectId, userId], (err) => {
                                 if (err) reject(err);
-                                resolve(row.adminCount);
+                                else resolve();
                             });
                         });
-
-                        if (adminCount === 1) {
-                            throw new Error('Project must have at least one administrator. Assign another administrator before changing this role.');
-                        }
+                    } else {
+                        // assign new user to the project
+                        const insertUserQuery = `INSERT INTO Project_User (projectID, userID, role) VALUES (?, ?, ?)`;
+                        await new Promise((resolve, reject) => {
+                            db.run(insertUserQuery, [projectId, userId, role], (err) => {
+                                if (err) reject(err);
+                                else resolve();
+                            });
+                        });
                     }
-
-                    // update the user's role
-                    const updateRoleQuery = `UPDATE Project_User SET role = ? WHERE projectID = ? AND userID = ?`;
-                    await new Promise((resolve, reject) => {
-                        db.run(updateRoleQuery, [role, projectId, userId], (err) => {
-                            if (err) reject(err);
-                            else resolve();
-                        });
-                    });
-                } else {
-                    // assign new user to the project
-                    const insertUserQuery = `INSERT INTO Project_User (projectID, userID, role) VALUES (?, ?, ?)`;
-                    await new Promise((resolve, reject) => {
-                        db.run(insertUserQuery, [projectId, userId, role], (err) => {
-                            if (err) reject(err);
-                            else resolve();
-                        });
-                    });
+                } catch (error) {
+                    warnings.push('Error updating user ${userId}: ${error.message}');
                 }
             }
         }
