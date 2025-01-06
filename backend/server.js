@@ -676,71 +676,14 @@ app.post('/projects/:projectId/tasks', async (req, res) => {
     }
 });
 
-// API endpoint to delete task from project
-app.delete('/projects/:projectId/tasks/:taskId', async (req, res) => {
-    const { projectId, taskId } = req.params;
-    const requestingUserId = req.user.id; // user attached to request by middleware
-
-    try {
-        // check if the task exists in the project
-        const taskBelongsToProjectQuery = `SELECT * FROM Task WHERE taskID = ? AND projectID = ?`;
-        const task = await new Promise((resolve, reject) => {
-            db.get(taskBelongsToProjectQuery, [taskId, projectId], (err, row) => {
-                if (err) reject(err);
-                resolve(row);
-            });
-        });
-
-        if (!task) {
-            return res.status(404).json({ error: 'Task not found in this project.' });
-        }
-
-        // check if the user is an admin in the project
-        const isAdminQuery = `SELECT role FROM Project_User WHERE projectID = ? AND userID = ? AND role = 'admin'`;
-        const isAdmin = await new Promise((resolve, reject) => {
-            db.get(isAdminQuery, [projectId, requestingUserId], (err, row) => {
-                if (err) reject(err);
-                resolve(!!row);
-            });
-        });
-
-        if (!isAdmin) {
-            return res.status(403).json({ error: 'Only administrators can delete tasks.' });
-        }
-
-        // delete task from database
-        const deleteTaskQuery = `DELETE FROM Task WHERE taskID = ?`;
-        await new Promise((resolve, reject) => {
-            db.run(deleteTaskQuery, [taskId], (err) => {
-                if (err) reject(err);
-                resolve();
-            });
-        });
-
-        // delete associated Task_User bonds
-        const deleteTaskUserAssociationsQuery = `DELETE FROM Task_User WHERE taskID = ?`;
-        await new Promise((resolve, reject) => {
-            db.run(deleteTaskUserAssociationsQuery, [taskId], (err) => {
-                if (err) reject(err);
-                resolve();
-            });
-        });
-
-        res.status(200).json({ message: 'Task deleted successfully.' });
-    } catch (error) {
-        console.error('Error deleting task:', error.message);
-        res.status(500).json({ error: 'Internal server error.' });
-    }
-});
-
-// API endpoint to edit/update task details (name, status)
+// API endpoint to edit/update task details (name, status, description)
 app.put('/projects/:projectId/tasks/:taskId', async (req, res) => {
     const { projectId, taskId } = req.params;
-    const { name, status } = req.body;
+    const { name, status, description } = req.body;
     const requestingUserId = req.user.id; // user attached to request by middleware
 
     // validate input
-    if (!name && !status) {
+    if (!name && !status && !description) {
         return res.status(400).json({ error: 'At least one field must be provided to update task.' });
     }
 
@@ -803,6 +746,10 @@ app.put('/projects/:projectId/tasks/:taskId', async (req, res) => {
             fieldsToUpdate.push('status = ?');
             values.push(status);
         }
+        if (description) {
+            fieldsToUpdate.push('description = ?');
+            values.push(description);
+        }
         values.push(taskId);
 
         const updateQuery = `UPDATE Task SET ${fieldsToUpdate.join(', ')} WHERE taskID = ?`;
@@ -813,13 +760,80 @@ app.put('/projects/:projectId/tasks/:taskId', async (req, res) => {
             });
         });
 
-        res.status(200).json({ message: 'Task updated successfully.' });
+        // fetch the created task to include the formatted creation date
+        const updatedTask = await new Promise((resolve, reject) => {
+            const query = `SELECT taskID, name, status, description, projectID, createdBy, strftime('%Y-%m-%d', creationDate) AS creationDate FROM Task WHERE taskID = ?`;
+            db.get(query, [taskId], (err, row) => {
+                if (err) reject(err);
+                resolve(row);
+            });
+        });
+
+        updatedTask.creationDate = formatDate(updatedTask.creationDate); // format the date
+
+        res.status(200).json({ message: 'Task updated successfully.', updatedTask });
     } catch (error) {
         console.error('Error updating task:', error.message);
         res.status(500).json({ error: 'Internal server error.' });
     }
 });
 
+// API endpoint to delete task from project
+app.delete('/projects/:projectId/tasks/:taskId', async (req, res) => {
+    const { projectId, taskId } = req.params;
+    const requestingUserId = req.user.id; // user attached to request by middleware
+
+    try {
+        // check if the task exists in the project
+        const taskBelongsToProjectQuery = `SELECT * FROM Task WHERE taskID = ? AND projectID = ?`;
+        const task = await new Promise((resolve, reject) => {
+            db.get(taskBelongsToProjectQuery, [taskId, projectId], (err, row) => {
+                if (err) reject(err);
+                resolve(row);
+            });
+        });
+
+        if (!task) {
+            return res.status(404).json({ error: 'Task not found in this project.' });
+        }
+
+        // check if the user is an admin in the project
+        const isAdminQuery = `SELECT role FROM Project_User WHERE projectID = ? AND userID = ? AND role = 'admin'`;
+        const isAdmin = await new Promise((resolve, reject) => {
+            db.get(isAdminQuery, [projectId, requestingUserId], (err, row) => {
+                if (err) reject(err);
+                resolve(!!row);
+            });
+        });
+
+        if (!isAdmin) {
+            return res.status(403).json({ error: 'Only administrators can delete tasks.' });
+        }
+
+        // delete task from database
+        const deleteTaskQuery = `DELETE FROM Task WHERE taskID = ?`;
+        await new Promise((resolve, reject) => {
+            db.run(deleteTaskQuery, [taskId], (err) => {
+                if (err) reject(err);
+                resolve();
+            });
+        });
+
+        // delete associated Task_User bonds
+        const deleteTaskUserAssociationsQuery = `DELETE FROM Task_User WHERE taskID = ?`;
+        await new Promise((resolve, reject) => {
+            db.run(deleteTaskUserAssociationsQuery, [taskId], (err) => {
+                if (err) reject(err);
+                resolve();
+            });
+        });
+
+        res.status(200).json({ message: 'Task deleted successfully.' });
+    } catch (error) {
+        console.error('Error deleting task:', error.message);
+        res.status(500).json({ error: 'Internal server error.' });
+    }
+});
 // load SSL-certificate files
 const options = {
     key: fs.readFileSync('../private-key.pem'), // private key
