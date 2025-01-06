@@ -565,7 +565,7 @@ app.delete();
 // API endpoint to add a task to a project
 app.post('/projects/:projectId/tasks', async (req, res) => {
     const { projectId } = req.params;
-    const { name, status, assignedUserIds } = req.body;
+    const { name, status, assignedUserIds, description } = req.body;
     const token = req.headers.authorization?.split(' ')[1];
     const decodedToken = jwt.verify(token, JWT_SECRET_KEY);
     const currentUserId = decodedToken.id;
@@ -573,6 +573,12 @@ app.post('/projects/:projectId/tasks', async (req, res) => {
     // validate input
     if (!name || !status) {
         return res.status(400).json({ error: 'Task name and status are required.' });
+    }
+
+    // validate assigned status
+    const allowedStatuses = ["in progress", "A", "B"]; // CHANGE THESE
+    if (!allowedStatuses.includes(status)) {
+        return res.status(400).json({ error: `Invalid status. Allowed values are: ${allowedStatuses.join(", ")}.` });
     }
 
     // validate assigned user(s)
@@ -609,8 +615,8 @@ app.post('/projects/:projectId/tasks', async (req, res) => {
 
         // insert the task into the database
         const newTaskId = await new Promise((resolve, reject) => {
-            const query = 'INSERT INTO Task (name, status, projectID) VALUES (?, ?, ?)';
-            db.run(query, [name, status, projectId], function (err) {
+            const query = `INSERT INTO Task (name, status, description, creationDate, createdBy, projectID) VALUES (?, ?, ?, DATE('now'), ?, ?)`;
+            db.run(query, [name, status, description, currentUserId, projectId], function (err) {
                 if (err) reject(err);
                 resolve(this.lastID); // get the ID of the newly created task
             });
@@ -652,7 +658,18 @@ app.post('/projects/:projectId/tasks', async (req, res) => {
 
         await Promise.all(assignPromises);
 
-        res.status(201).json({ message: 'Task created successfully.', taskId: newTaskId });
+        // fetch the created task to include the formatted creation date
+        const task = await new Promise((resolve, reject) => {
+            const query = `SELECT taskID, name, status, description, projectID, createdBy, strftime('%Y-%m-%d', creationDate) AS creationDate FROM Task WHERE taskID = ?`;
+            db.get(query, [newTaskId], (err, row) => {
+                if (err) reject(err);
+                resolve(row);
+            });
+        });
+
+        task.creationDate = formatDate(task.creationDate); // format the date
+
+        res.status(201).json({ message: 'Task created successfully.', task });
     } catch (error) {
         console.error('Error adding task:', error.message);
         res.status(500).json({ error: 'Internal server error.' });
