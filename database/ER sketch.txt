@@ -4,7 +4,7 @@ alle users in de task manager kunnen een project aanmaken
 wie een project aanmaakt heeft daarin automatisch de "admin" rol (ook aanmaakdatum wordt bijgehouden)
 elke admin binnen een project kan:
 	andere users aan het project toevoegen/verwijderen, en per user selecteren of deze een "admin" of "general" rol hebben binnen het project (maar originele admin blijft sws admin)
-	taken toevoegen (bijhouden van aanmaakdatum en persoon), verwijderen, wijzigen, de status van de taak veranderen en users toewijzen aan een taak
+	taken toevoegen (bijhouden van aanmaakdatum en persoon), wijzigen, verwijderen, de status van de taak veranderen en users toewijzen aan een taak
 elke "general" user binnen een project kan taken (status) aanpassen waaraan die is toegewezen door een admin
 je kan een taakloos project hebben, maar geen projectloze taken
 elke taak hoort tot exact één project

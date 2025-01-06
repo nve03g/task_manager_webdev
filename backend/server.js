@@ -778,6 +778,90 @@ app.put('/projects/:projectId/tasks/:taskId', async (req, res) => {
     }
 });
 
+// API endpoint to delete user from a task
+app.delete('/tasks/:taskId/users/:userId', async (req, res) => {
+    const { taskId, userId } = req.params;
+    const token = req.headers.authorization?.split(' ')[1];
+    const decodedToken = jwt.verify(token, JWT_SECRET_KEY);
+    const currentUserId = decodedToken.id;
+
+    try {
+        // check if the task exists
+        const taskExists = await new Promise((resolve, reject) => {
+            const query = 'SELECT * FROM Task WHERE taskID = ?';
+            db.get(query, [taskId], (err, row) => {
+                if (err) reject(err);
+                resolve(!!row);
+            });
+        });
+
+        if (!taskExists) {
+            return res.status(404).json({ error: 'Task not found.' });
+        }
+
+        // check if the current user is an admin in the project
+        const projectIdQuery = `SELECT projectID FROM Task WHERE taskID = ?`;
+        const projectId = await new Promise((resolve, reject) => {
+            db.get(projectIdQuery, [taskId], (err, row) => {
+                if (err) reject(err);
+                resolve(row.projectID);
+            });
+        });
+
+        const isAdmin = await new Promise((resolve, reject) => {
+            const query = `SELECT role FROM Project_User WHERE projectID = ? AND userID = ? AND role = 'admin'`;
+            db.get(query, [projectId, currentUserId], (err, row) => {
+                if (err) reject(err);
+                resolve(!!row);
+            });
+        });
+
+        if (!isAdmin) {
+            return res.status(403).json({ error: 'Only administrators can remove users from a task.' });
+        }
+
+        // check if the user is assigned to the task
+        const userAssigned = await new Promise((resolve, reject) => {
+            const query = `SELECT * FROM Task_User WHERE taskID = ? AND userID = ?`;
+            db.get(query, [taskId, userId], (err, row) => {
+                if (err) reject(err);
+                resolve(!!row);
+            });
+        });
+
+        if (!userAssigned) {
+            return res.status(404).json({ error: 'User is not assigned to this task.' });
+        }
+
+        // ensure the task will still have at least one assigned user after removal
+        const remainingUsersCount = await new Promise((resolve, reject) => {
+            const query = `SELECT COUNT(*) AS userCount FROM Task_User WHERE taskID = ?`;
+            db.get(query, [taskId], (err, row) => {
+                if (err) reject(err);
+                resolve(row.userCount);
+            });
+        });
+
+        if (remainingUsersCount <= 1) {
+            return res.status(400).json({ error: 'Cannot remove the last user assigned to the task. Assign another user first.' });
+        }
+
+        // Remove the user from the task
+        await new Promise((resolve, reject) => {
+            const query = `DELETE FROM Task_User WHERE taskID = ? AND userID = ?`;
+            db.run(query, [taskId, userId], (err) => {
+                if (err) reject(err);
+                resolve();
+            });
+        });
+
+        res.status(200).json({ message: 'User removed from task successfully.' });
+    } catch (error){
+        console.error('Error removing user from task:', error.message);
+        res.status(500).json({ error: 'Internal server error.' });
+    }
+});
+
 // API endpoint to delete task from project
 app.delete('/projects/:projectId/tasks/:taskId', async (req, res) => {
     const { projectId, taskId } = req.params;
