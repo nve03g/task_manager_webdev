@@ -1,0 +1,1 @@
+For reusable UI components (e.g., buttons, modals, forms).

@@ -1,0 +1,1 @@
+For main pages like Dashboard, Projects, Tasks.
