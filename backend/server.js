@@ -87,18 +87,11 @@ const formatDate = (isoDate) => {
     return `${day}/${month}/${year}`;
 };
 
-// API endpoint to get all users - DELETE LATER
-app.get('/users', (req, res) => {
-    const query = 'SELECT * FROM User';
-    db.all(query, [], (err, rows) => {
-        if (err) {
-            console.error(err.message);
-            res.status(500).json({ error: 'Failed to fetch users' });
-        } else {
-            res.json(rows)
-        }
-    });
-});
+
+
+
+
+// **********---------------------- FUNCTIONAL ENDPOINTS ----------------------**********
 
 // API endpoint to login user
 app.post('/login', async (req, res) => { // use async function for handling database queries or API calls
@@ -953,7 +946,7 @@ app.delete('/tasks/:taskId/users/:userId', async (req, res) => {
         });
 
         res.status(200).json({ message: 'User removed from task successfully.' });
-    } catch (error){
+    } catch (error) {
         console.error('Error removing user from task:', error.message);
         res.status(500).json({ error: 'Internal server error.' });
     }
@@ -998,7 +991,7 @@ app.delete('/projects/:projectId/tasks/:taskId', async (req, res) => {
                 else resolve();
             });
         });
-        
+
         // delete associated Task_User bonds first
         const deleteTaskUserAssociationsQuery = `DELETE FROM Task_User WHERE taskID = ?`;
         await new Promise((resolve, reject) => {
@@ -1040,6 +1033,63 @@ app.delete('/projects/:projectId/tasks/:taskId', async (req, res) => {
         res.status(500).json({ error: 'Internal server error.' });
     }
 });
+
+
+// API endpoint to validate token (used by frontend)
+app.post('/validate-token', checkTokenBlacklist, (req, res) => {
+    // If the token is valid, the middleware (checkTokenBlacklist) will call `next()` and this handler will be executed
+    res.status(200).json({ message: 'Token is valid.', user: req.user, }); // req.user contains { id, username } from the decoded token
+});
+
+
+
+
+
+// **********---------------------- DESIGN ENDPOINTS ----------------------**********
+// API endpoint to get all projects for the authenticated user
+app.get('/projects', checkTokenBlacklist, async (req, res) => {
+    const userId = req.user.id;
+
+    try {
+        const query = 'SELECT * FROM Project WHERE createdBy = ? OR projectID IN (SELECT projectID FROM Project_User WHERE userID = ?)'; // user is either the creator of the project or is part of the project
+        const projects = await db.all(query, [userId, userId]);
+
+        res.json({ projects });
+    } catch (error) {
+        console.error('Error fetching projects:', error);
+        res.status(500).json({ error: 'Internal server error.' });
+    }
+});
+
+// API endpoint to get user specific data (for profile)
+app.get('/profile', checkTokenBlacklist, async (req, res) => {
+    const userId = req.user.id;
+
+  try {
+    // get all projects this user has created
+    const createdProjectsQuery = 'SELECT * FROM Project WHERE createdBy = ?';
+    const createdProjects = await db.all(createdProjectsQuery, [userId]);
+
+    // get all projects the user is assigned to
+    const assignedProjectsQuery = 'SELECT * FROM Project WHERE projectID IN (SELECT projectID FROM Project_User WHERE userID = ?)';
+    const assignedProjects = await db.all(assignedProjectsQuery, [userId]);
+
+    // get this user's task count
+    const assignedTasksCountQuery = 'SELECT COUNT(*) AS count FROM Task_User WHERE userID = ?';
+    const assignedTasksCount = await db.get(assignedTasksCountQuery, [userId]);
+
+    res.json({
+      username: req.user.username,
+      createdProjects,
+      assignedProjects,
+      assignedTasksCount: assignedTasksCount.count,
+    });
+  } catch (error) {
+    console.error('Error fetching profile:', error);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
 // load SSL-certificate files
 const options = {
     key: fs.readFileSync('../private-key.pem'), // private key
