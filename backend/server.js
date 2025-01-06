@@ -560,7 +560,104 @@ app.delete('/projects/:projectId/users/:userId', async (req, res) => {
 });
 
 // API endpoint to delete a project and all its dependencies
-app.delete();
+app.delete('/projects/:projectId', async (req, res) => {
+    const { projectId } = req.params;
+    const requestingUserId = req.user.id; // extracted from token via middleware
+
+    try {
+        // check if the project exists
+        const projectExistsQuery = `SELECT * FROM Project WHERE projectID = ?`;
+        const projectExists = await new Promise((resolve, reject) => {
+            db.get(projectExistsQuery, [projectId], (err, row) => {
+                if (err) reject(err);
+                resolve(row);
+            });
+        });
+
+        if (!projectExists) {
+            return res.status(404).json({ error: 'Project not found.' });
+        }
+
+        // verify the requesting user is an admin in the project
+        const isAdminQuery = `SELECT role FROM Project_User WHERE projectID = ? AND userID = ? AND role = 'admin'`;
+        const isAdmin = await new Promise((resolve, reject) => {
+            db.get(isAdminQuery, [projectId, requestingUserId], (err, row) => {
+                if (err) reject(err);
+                resolve(row ? true : false);
+            });
+        });
+
+        if (!isAdmin) {
+            return res.status(403).json({ error: 'Only administrators can delete the project.' });
+        }
+
+        // start transaction
+        await new Promise((resolve, reject) => {
+            db.run('BEGIN TRANSACTION;', (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+
+        // delete task-user assignments
+        const deleteTaskUserQuery = `DELETE FROM Task_User WHERE taskID IN (SELECT taskID FROM Task WHERE projectID = ?)`;
+        await new Promise((resolve, reject) => {
+            db.run(deleteTaskUserQuery, [projectId], (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+
+        // delete tasks
+        const deleteTasksQuery = `DELETE FROM Task WHERE projectID = ?`;
+        await new Promise((resolve, reject) => {
+            db.run(deleteTasksQuery, [projectId], (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+
+        // delete project-user assignments
+        const deleteProjectUserQuery = `DELETE FROM Project_User WHERE projectID = ?`;
+        await new Promise((resolve, reject) => {
+            db.run(deleteProjectUserQuery, [projectId], (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+
+        // delete the project itself
+        const deleteProjectQuery = `DELETE FROM Project WHERE projectID = ?`;
+        await new Promise((resolve, reject) => {
+            db.run(deleteProjectQuery, [projectId], (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+
+        // commit transaction
+        await new Promise((resolve, reject) => {
+            db.run('COMMIT;', (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+
+        res.status(200).json({ message: 'Project and all its dependencies deleted successfully.' });
+    } catch (error) {
+        console.error('Error deleting project:', error.message);
+
+        // rollback transaction on failure
+        await new Promise((resolve, reject) => {
+            db.run('ROLLBACK;', (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+
+        res.status(500).json({ error: 'Internal server error.' });
+    }
+});
 
 // API endpoint to add a task to a project
 app.post('/projects/:projectId/tasks', async (req, res) => {
