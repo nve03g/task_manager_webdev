@@ -894,6 +894,23 @@ app.delete('/projects/:projectId/tasks/:taskId', async (req, res) => {
             return res.status(403).json({ error: 'Only administrators can delete tasks.' });
         }
 
+        // start transaction
+        await new Promise((resolve, reject) => {
+            db.run('BEGIN TRANSACTION;', (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+        
+        // delete associated Task_User bonds first
+        const deleteTaskUserAssociationsQuery = `DELETE FROM Task_User WHERE taskID = ?`;
+        await new Promise((resolve, reject) => {
+            db.run(deleteTaskUserAssociationsQuery, [taskId], (err) => {
+                if (err) reject(err);
+                resolve();
+            });
+        });
+
         // delete task from database
         const deleteTaskQuery = `DELETE FROM Task WHERE taskID = ?`;
         await new Promise((resolve, reject) => {
@@ -903,18 +920,26 @@ app.delete('/projects/:projectId/tasks/:taskId', async (req, res) => {
             });
         });
 
-        // delete associated Task_User bonds
-        const deleteTaskUserAssociationsQuery = `DELETE FROM Task_User WHERE taskID = ?`;
+        // commit transaction
         await new Promise((resolve, reject) => {
-            db.run(deleteTaskUserAssociationsQuery, [taskId], (err) => {
+            db.run('COMMIT;', (err) => {
                 if (err) reject(err);
-                resolve();
+                else resolve();
             });
         });
 
         res.status(200).json({ message: 'Task deleted successfully.' });
     } catch (error) {
         console.error('Error deleting task:', error.message);
+
+        // rollback transaction in case of an error
+        await new Promise((resolve, reject) => {
+            db.run('ROLLBACK;', (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+
         res.status(500).json({ error: 'Internal server error.' });
     }
 });
