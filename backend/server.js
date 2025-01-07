@@ -1121,6 +1121,32 @@ app.get('/projects', checkTokenBlacklist, async (req, res) => {
     }
 });
 
+// API endpoint to get all tasks from the authenticated user
+app.get('/tasks', checkTokenBlacklist, async (req, res) => {
+    const userId = req.user.id; // extract user ID from the decoded token
+
+    try {
+        // fetch tasks where the user is assigned
+        const tasks = await new Promise((resolve, reject) => {
+            const query = `
+                SELECT t.taskID, t.name, t.status, t.description, t.creationDate, t.projectID, p.title AS projectTitle
+                FROM Task t
+                JOIN Task_User tu ON t.taskID = tu.taskID
+                JOIN Project p ON t.projectID = p.projectID
+                WHERE tu.userID = ?`;
+            db.all(query, [userId], (err, rows) => {
+                if (err) reject(err);
+                resolve(rows);
+            });
+        });
+
+        res.status(200).json({ message: 'Fetched tasks successfully', tasks });
+    } catch (error) {
+        console.error('Error fetching tasks:', error.message);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 // API endpoint to get user specific data (for profile)
 app.get('/profile', checkTokenBlacklist, async (req, res) => {
     const userId = req.user.id;
