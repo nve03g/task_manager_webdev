@@ -8,7 +8,6 @@ const fs = require('fs');
 const bcrypt = require('bcrypt'); // for password hashing
 const jwt = require('jsonwebtoken'); // for generating authentication tokens
 const { resolve } = require('path');
-const { rejects } = require('assert');
 const { JWT_SECRET_KEY } = require('./key_config');
 const redis = require('redis');
 
@@ -1100,49 +1099,99 @@ app.post('/validate-token', checkTokenBlacklist, (req, res) => {
 
 
 // API endpoint to get all projects for the authenticated user
-app.get('/projects', checkTokenBlacklist, async (req, res) => {
-    const userId = req.user.id;
+// app.get('/projects', checkTokenBlacklist, async (req, res) => {
+//     const userId = req.user.id;
+
+//     try {
+//         // get all projects the user is creator of or assigned to
+//         const projects = await new Promise((resolve, reject) => {
+//             const query = `
+//                 SELECT 
+//                     p.projectID, 
+//                     p.title, 
+//                     p.description, 
+//                     p.creationDate, 
+//                     u.username AS createdBy
+//                 FROM Project p
+//                 JOIN User u ON p.createdBy = u.userID
+//                 WHERE p.createdBy = ? 
+//                 OR p.projectID IN (SELECT projectID FROM Project_User WHERE userID = ?)`;
+//             // user is either the creator of the project or is part of the project
+//             db.all(query, [userId, userId], (err, rows) => {
+//                 if (err) reject(err);
+//                 else resolve(rows);
+//             });
+
+//         });
+
+//         res.json({ message: "Fetched projects:", projects });
+//     } catch (error) {
+//         console.error('Error fetching projects:', error);
+//         res.status(500).json({ error: 'Internal server error.' });
+//     }
+// });
+
+
+// API endpoint to get all projects and tasks from the authenticated user
+app.get('/projects-with-tasks', checkTokenBlacklist, async (req, res) => {
+    const userId = req.user.id; // extract user ID from the decoded token
 
     try {
         // get all projects the user is creator of or assigned to
         const projects = await new Promise((resolve, reject) => {
-            const query = 'SELECT * FROM Project WHERE createdBy = ? OR projectID IN (SELECT projectID FROM Project_User WHERE userID = ?)'; // user is either the creator of the project or is part of the project
-            db.all(query, [userId, userId], (err, rows) => {
-                if (err) reject(err);
-                else resolve(rows);
-            });
-
-        });
-
-        res.json({ message: "Fetched projects:", projects });
-    } catch (error) {
-        console.error('Error fetching projects:', error);
-        res.status(500).json({ error: 'Internal server error.' });
-    }
-});
-
-// API endpoint to get all tasks from the authenticated user
-app.get('/tasks', checkTokenBlacklist, async (req, res) => {
-    const userId = req.user.id; // extract user ID from the decoded token
-
-    try {
-        // fetch tasks where the user is assigned
-        const tasks = await new Promise((resolve, reject) => {
             const query = `
-                SELECT t.taskID, t.name, t.status, t.description, t.creationDate, t.projectID, p.title AS projectTitle
-                FROM Task t
-                JOIN Task_User tu ON t.taskID = tu.taskID
-                JOIN Project p ON t.projectID = p.projectID
-                WHERE tu.userID = ?`;
-            db.all(query, [userId], (err, rows) => {
+                SELECT 
+                    p.projectID, 
+                    p.title, 
+                    p.description, 
+                    p.creationDate, 
+                    u.username AS createdBy
+                FROM Project p
+                JOIN User u ON p.createdBy = u.userID
+                WHERE p.createdBy = ? 
+                OR p.projectID IN (SELECT projectID FROM Project_User WHERE userID = ?)`; // user is either the creator of the project or is part of the project
+            db.all(query, [userId, userId], (err, rows) => {
                 if (err) reject(err);
                 resolve(rows);
             });
         });
 
-        res.status(200).json({ message: 'Fetched tasks successfully', tasks });
+        // fetch tasks only assigned to the user in the fetched projects
+        const projectIds = projects.map(project => project.projectID);
+        const tasks = await new Promise((resolve, reject) => {
+            const query = `
+                SELECT 
+                    t.taskID, 
+                    t.name, 
+                    t.status, 
+                    t.description, 
+                    t.creationDate, 
+                    t.projectID
+                FROM Task t
+                JOIN Task_User tu ON t.taskID = tu.taskID
+                WHERE t.projectID IN (${projectIds.map(() => '?').join(',')})`;
+            db.all(query, [...projectIds, userId], (err, rows) => {
+                if (err) reject(err);
+                resolve(rows);
+            });
+        });
+
+        // group tasks by projectID
+        const projectTaskMap = tasks.reduce((map, task) => {
+            if (!map[task.projectID]) map[task.projectID] = [];
+            map[task.projectID].push(task);
+            return map;
+        }, {});
+
+        // attach tasks to their respective projects
+        const projectsWithTasks = projects.map(project => ({
+            ...project,
+            tasks: projectTaskMap[project.projectID] || []
+        }));
+
+        res.status(200).json({ projects: projectsWithTasks});
     } catch (error) {
-        console.error('Error fetching tasks:', error.message);
+        console.error('Error fetching projects with tasks:', error.message);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
