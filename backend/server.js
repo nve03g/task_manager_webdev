@@ -1169,7 +1169,8 @@ app.get('/projects-with-tasks', checkTokenBlacklist, async (req, res) => {
                     t.projectID
                 FROM Task t
                 JOIN Task_User tu ON t.taskID = tu.taskID
-                WHERE t.projectID IN (${projectIds.map(() => '?').join(',')})`;
+                WHERE t.projectID IN (${projectIds.map(() => '?').join(',')})
+                AND tu.userID = ?`;
             db.all(query, [...projectIds, userId], (err, rows) => {
                 if (err) reject(err);
                 resolve(rows);
