@@ -1,0 +1,58 @@
+<mxfile host="Electron" modified="2025-01-07T00:05:00.203Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/24.6.4 Chrome/124.0.6367.207 Electron/30.0.6 Safari/537.36" etag="OnqtzemDcNCAOMMxichu" version="24.6.4" type="device">
+  <diagram name="Pagina-1" id="xgBbTUGaxAenz8IpjHJa">
+    <mxGraphModel dx="954" dy="727" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="xvURnEesIbQ_wAalwUQ0-81" value="&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;navigation bar title (&quot;Task Manager&quot;)" style="rounded=0;whiteSpace=wrap;html=1;align=left;" parent="1" vertex="1">
+          <mxGeometry x="170" y="150" width="740" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="xvURnEesIbQ_wAalwUQ0-83" value="log out button" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="810" y="160" width="90" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="xvURnEesIbQ_wAalwUQ0-84" value="profile" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="740" y="165" width="60" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="F8m1L8dchD1DXvjNAgwh-1" value="dashboard" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="670" y="165" width="60" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="F8m1L8dchD1DXvjNAgwh-3" value="created projects" style="swimlane;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="294" y="314" width="175" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="F8m1L8dchD1DXvjNAgwh-4" value="project title 1" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="F8m1L8dchD1DXvjNAgwh-3">
+          <mxGeometry x="13" y="37" width="86" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="F8m1L8dchD1DXvjNAgwh-6" value="project title 2" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="F8m1L8dchD1DXvjNAgwh-3">
+          <mxGeometry x="13" y="68" width="86" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="F8m1L8dchD1DXvjNAgwh-8" value="project title 3" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="F8m1L8dchD1DXvjNAgwh-3">
+          <mxGeometry x="13" y="100" width="86" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="F8m1L8dchD1DXvjNAgwh-12" value="..." style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="F8m1L8dchD1DXvjNAgwh-3">
+          <mxGeometry x="42" y="144" width="28" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="F8m1L8dchD1DXvjNAgwh-21" value="assigned projects" style="swimlane;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="635" y="314" width="175" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="F8m1L8dchD1DXvjNAgwh-22" value="project title 1" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="F8m1L8dchD1DXvjNAgwh-21">
+          <mxGeometry x="13" y="37" width="86" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="F8m1L8dchD1DXvjNAgwh-23" value="project title 2" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="F8m1L8dchD1DXvjNAgwh-21">
+          <mxGeometry x="13" y="68" width="86" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="F8m1L8dchD1DXvjNAgwh-24" value="project title 3" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="F8m1L8dchD1DXvjNAgwh-21">
+          <mxGeometry x="13" y="100" width="86" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="F8m1L8dchD1DXvjNAgwh-25" value="..." style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="F8m1L8dchD1DXvjNAgwh-21">
+          <mxGeometry x="42" y="144" width="28" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="F8m1L8dchD1DXvjNAgwh-27" value="&quot;Hello, username! You have XXX tasks left to do :)" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="378.5" y="240" width="323" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="F8m1L8dchD1DXvjNAgwh-28" value="every project title should be clickable, so that the detailed view of that project opens up" style="shape=callout;whiteSpace=wrap;html=1;perimeter=calloutPerimeter;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="750" y="238" width="174" height="80" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

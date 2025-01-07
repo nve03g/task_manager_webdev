@@ -1,4 +1,4 @@
-<mxfile host="Electron" modified="2025-01-06T15:07:26.765Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/24.6.4 Chrome/124.0.6367.207 Electron/30.0.6 Safari/537.36" etag="SewMOYhZsYKfRoENGaX-" version="24.6.4" type="device">
+<mxfile host="Electron" modified="2025-01-06T15:21:41.623Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/24.6.4 Chrome/124.0.6367.207 Electron/30.0.6 Safari/537.36" etag="n54bxSZq38m0L3OzGVs3" version="24.6.4" type="device">
   <diagram name="Pagina-1" id="xgBbTUGaxAenz8IpjHJa">
     <mxGraphModel dx="1060" dy="808" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
       <root>
@@ -199,6 +199,9 @@
         </mxCell>
         <mxCell id="xvURnEesIbQ_wAalwUQ0-84" value="profile" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
           <mxGeometry x="740" y="165" width="60" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="xvURnEesIbQ_wAalwUQ0-87" value="maybe we should switch task name and status in project card" style="shape=callout;whiteSpace=wrap;html=1;perimeter=calloutPerimeter;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="900" y="56" width="120" height="80" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
