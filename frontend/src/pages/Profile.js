@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../AuthContext';
-import Navbar from '../components/Navbar';
 // import './Profile.css';
 
 const Profile = () => {
@@ -43,23 +42,31 @@ const Profile = () => {
     return (
         <div>
             <h1>Profile</h1>
-            <h2>Username: {profile.username}</h2>
+            <h2>Hello, {profile.username}! You have {profile.assignedTasksCount} {profile.assignedTasksCount === 1 ? " task" : " tasks"} left to do :)</h2>
             <h3>Created Projects:</h3>
-            <ul>
-                {profile.createdProjects.map((project) => (
-                    <li key={project.id}>
-                        {project.title} (Created on: {project.creationDate})
-                    </li>
-                ))}
-            </ul>
+            {profile.createdProjects.length > 0 ? (
+                <ul>
+                    {profile.createdProjects.map((project) => (
+                        <li key={project.id}>
+                            {project.title}
+                        </li>
+                    ))}
+                </ul>
+            ) : (
+                <p>You haven't created any projects yet.</p>
+            )}
             <h3>Assigned Projects:</h3>
-            <ul>
-                {profile.assignedProjects.map((project) => (
-                    <li key={project.id}>{project.title}</li>
-                ))}
-            </ul>
-            <h3>Tasks Assigned:</h3>
-            <p>{profile.assignedTasksCount} tasks assigned.</p>
+            {profile.assignedProjects.length > 0 ? (
+                <ul>
+                    {profile.assignedProjects.map((project) => (
+                        <li key={project.id}>
+                            {project.title}
+                        </li>
+                    ))}
+                </ul>
+            ) : (
+                <p>You're currently not assigned to any projects.</p>
+            )}
         </div>
     );
 };
