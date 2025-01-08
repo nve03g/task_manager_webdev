@@ -14,6 +14,7 @@ const Navbar = () => {
             <ul className="navbar-links">
                 <li><a href="/dashboard">Dashboard</a></li>
                 <li><a href="/profile">Profile</a></li>
+                <li><a href="/add-project">New project</a></li>
                 <li><button className="logout-button" onClick={logout}>Logout</button></li>
             </ul>
         </nav>

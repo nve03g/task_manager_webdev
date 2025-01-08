@@ -88,9 +88,9 @@ const Dashboard = () => {
             <h1>Dashboard</h1>
 
             <div className="dashboard-actions">
-                <button onClick={() => navigate("/add-project")} className="action-button">
+                {/* <button onClick={() => navigate("/add-project")} className="action-button">
                     Add Project
-                </button>
+                </button> */}
                 <button onClick={() => navigate("/add-task")} className="action-button">
                     Add Task
                 </button>

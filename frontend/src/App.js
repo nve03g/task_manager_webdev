@@ -9,6 +9,7 @@ import Profile from './pages/Profile';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
 import PrivateRoute from './PrivateRoute';
+import AddProject from './pages/AddProject';
 
 
 function App() {
@@ -37,6 +38,16 @@ function App() {
             <PrivateRoute>
               <Navbar />
               <Profile />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/add-project"
+          element={
+            <PrivateRoute>
+              <Navbar />
+              <AddProject />
             </PrivateRoute>
           }
         />
