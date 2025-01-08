@@ -1,21 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../AuthContext';
-import { useNavigate } from 'react-router-dom';
-// import './Login.css';
+import { useNavigate, Link } from 'react-router-dom';
+import '../styles/login.css';
 
 const Login = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState(null);
-    const { authToken, login } = useAuth(); // access authToken and login function from AuthContext
+    const { login } = useAuth(); // access authToken and login function from AuthContext
     const navigate = useNavigate();
-
-    // useEffect(() => {
-    //     // redirect to dashboard if already logged in
-    //     if (authToken) {
-    //         navigate('/dashboard', { replace: true });
-    //     }
-    // }, [authToken, navigate]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -31,23 +24,25 @@ const Login = () => {
             console.log('Login API response:', data);
 
             if (!response.ok) {
-                throw new Error(data.error || 'Failed to login.');
+                setError(data.error || 'Invalid username or password.');
+                return; // exit early if login fails
             }
 
             login(data.token); // log in user
+            setError(null);
 
             // replace the login page in the browser's history
             // navigate('/dashboard', { replace: true }); // redirect to dashboard
         } catch (err) {
             console.error('Login error:', error);
-            setError('Invalid username or password.');
+            setError('An error occured. Please try again.');
         }
     };
 
     return (
-        <div>
+        <div className="login-container">
             <h1>Login</h1>
-            {error && <p style={{ color: 'red' }}>{error}</p>}
+            {error && <p className="error-message">{error}</p>}
             <form onSubmit={handleSubmit}>
                 <input
                     type="text"
