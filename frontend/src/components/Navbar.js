@@ -1,15 +1,15 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import '../styles/Navbar.css';
 
 const Navbar = () => {
-    const { logout } = useAuth(); // Ensure `useAuth` is not returning undefined
+    const { logout } = useAuth(); // check authentication status
     
     return (
         <nav className="navbar">
             <div className="navbar-logo">
-                <a href="/">Task Manager</a>
+                <a href="/dashboard">Task Manager</a>
             </div>
             <ul className="navbar-links">
                 <li><a href="/dashboard">Dashboard</a></li>
