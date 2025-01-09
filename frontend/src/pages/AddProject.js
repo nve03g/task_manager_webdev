@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import '../styles/addProject.css';
@@ -6,25 +6,48 @@ import '../styles/addProject.css';
 const AddProject = () => {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
-    const [users, setUsers] = useState([{ userId: '', role: 'general' }]); // Default user entry
+    const [users, setUsers] = useState([]); // list of all users from the database
+    const [assignedUsers, setAssignedUsers] = useState([{ userId: '', role: 'general' }]); // users assigned to the project
     const [message, setMessage] = useState(null);
     const [error, setError] = useState(null);
-    const { authToken } = useAuth(); // access the authentication token from the AuthContext
+    const { authToken } = useAuth();
     const navigate = useNavigate();
 
-    const handleUserChange = (index, field, value) => {
-        const updatedUsers = [...users];
-        updatedUsers[index][field] = value;
-        setUsers(updatedUsers);
+    // fetch users from the backend
+    useEffect(() => {
+        const fetchUsers = async () => {
+            try {
+                const response = await fetch('https://localhost:443/users', {
+                    headers: {
+                        Authorization: `Bearer ${authToken}`,
+                    },
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    setUsers(data.users || []); // set all users in dropdown
+                } else {
+                    setError(data.error || 'Failed to fetch users.');
+                }
+            } catch (err) {
+                setError('An error occurred while fetching users.');
+            }
+        };
+
+        fetchUsers();
+    }, [authToken]);
+
+    const handleAssignedUserChange = (index, field, value) => {
+        const updatedAssignedUsers = [...assignedUsers];
+        updatedAssignedUsers[index][field] = value;
+        setAssignedUsers(updatedAssignedUsers);
     };
 
-    const handleAddUser = () => {
-        setUsers([...users, { userId: '', role: 'general' }]);
+    const handleAddAssignedUser = () => {
+        setAssignedUsers([...assignedUsers, { userId: '', role: 'general' }]);
     };
 
-    const handleRemoveUser = (index) => {
-        const updatedUsers = users.filter((_, i) => i !== index);
-        setUsers(updatedUsers);
+    const handleRemoveAssignedUser = (index) => {
+        setAssignedUsers(assignedUsers.filter((_, i) => i !== index));
     };
 
     const handleSubmit = async (e) => {
@@ -37,18 +60,21 @@ const AddProject = () => {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${authToken}`
                 },
-                body: JSON.stringify({ title, description, users }),
+                body: JSON.stringify({ title, description, users: assignedUsers }),
             });
 
             const data = await response.json();
 
-            if (!response.ok) {
+            if (response.ok) {
+                setMessage('Project created successfully!');
+                setTimeout(() => navigate('/dashboard'), 2000);
+            } else {
                 setError(data.error || 'Failed to create project.');
-                return;
             }
 
-            setMessage('Project created successfully!');
-            setTimeout(() => navigate('/dashboard'), 2000); // Redirect to dashboard after 2 seconds
+            // setMessage('Project created successfully!');
+            // console.log('Submitted data:', { title, description, users: selectedUsers });
+            // setTimeout(() => navigate('/dashboard'), 2000); // redirect to dashboard after 2 seconds
         } catch (err) {
             setError('An error occurred. Please try again.');
         }
@@ -59,7 +85,7 @@ const AddProject = () => {
             <h1>Create New Project</h1>
             {message && <p className="success-message">{message}</p>}
             {error && <p className="error-message">{error}</p>}
-            <form onSubmit={handleSubmit} className="add-project-form">
+            <form onSubmit={handleSubmit}>
                 <div className="form-group">
                     <label htmlFor="title">Project Title</label>
                     <input
@@ -81,36 +107,46 @@ const AddProject = () => {
                 </div>
                 <div className="form-group">
                     <label>Assign Users</label>
-                    {users.map((user, index) => (
+                    {assignedUsers.map((user, index) => (
                         <div key={index} className="user-entry">
-                            <input
-                                type="text"
-                                placeholder="User ID"
+                            <select
                                 value={user.userId}
-                                onChange={(e) => handleUserChange(index, 'userId', e.target.value)}
-                                required
-                            />
+                                onChange={(e) =>
+                                    handleAssignedUserChange(index, 'userId', e.target.value)
+                                }
+                            >
+                                <option value="">Select a user</option>
+                                {users.map((userOption) => (
+                                    <option key={userOption.userID} value={userOption.userID}>
+                                        {userOption.username}
+                                    </option>
+                                ))}
+                            </select>
                             <select
                                 value={user.role}
-                                onChange={(e) => handleUserChange(index, 'role', e.target.value)}
+                                onChange={(e) =>
+                                    handleAssignedUserChange(index, 'role', e.target.value)
+                                }
                             >
-                                <option value="admin">Admin</option>
                                 <option value="general">General</option>
+                                <option value="admin">Admin</option>
                             </select>
                             <button
                                 type="button"
-                                onClick={() => handleRemoveUser(index)}
-                                disabled={users.length === 1}
+                                onClick={() => handleRemoveAssignedUser(index)}
+                                disabled={assignedUsers.length === 1}
                             >
                                 Remove
                             </button>
                         </div>
                     ))}
-                    <button type="button" onClick={handleAddUser}>
+                    <button type="button" onClick={handleAddAssignedUser}>
                         Add User
                     </button>
                 </div>
-                <button type="submit" className="submit-button">Create Project</button>
+                <button type="submit" className="submit-button">
+                    Create Project
+                </button>
             </form>
         </div>
     );
