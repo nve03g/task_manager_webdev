@@ -255,11 +255,17 @@ app.post('/projects', async (req, res) => {
         // assign additional users if provided
         if (users) {
             for (const { userId, role } of users) {
+                // skip invalid or empty user IDs
+                if (!userId || typeof userId !== 'number') {
+                    //console.warn('Skipping invalid user entry: ${JSON.stringify({ userId, role })}');
+                    continue;
+                }
                 // validate role
                 if (!['admin', 'general'].includes(role)) {
-                    throw new Error(`Invalid role for user ${userId}.`);
+                    throw new Error(`Invalid role for user ${userId}: ${role}.`);
                 }
 
+                // assign user to the project
                 await new Promise((resolve, reject) => {
                     const query = 'INSERT INTO Project_User (projectID, userID, role) VALUES (?, ?, ?)';
                     db.run(query, [projectId, userId, role], (err) => {
@@ -378,7 +384,6 @@ app.put('/projects/:projectId', async (req, res) => {
             for (const { userId, role } of users) {
                 // prevent changes to the role of the original admin (`createdBy`)
                 if (userId === createdBy) {
-                    // console.log(`Skipping update for original admin userID: ${userId}`);
                     warnings.push(`Cannot modify the role of the original admin (userID: ${userId}).`);
                     continue; // skip any updates for this user (AKA the original admin)
                 }
@@ -1046,92 +1051,6 @@ app.post('/validate-token', checkTokenBlacklist, (req, res) => {
 
 // **********---------------------- DESIGN ENDPOINTS ----------------------**********
 
-// // API endpoint to view user dashboard (projects and tasks from that specific user)
-// app.get('/user/dashboard', async (req, res) => {
-//     const token = req.headers.authorization?.split(' ')[1];
-//     const decodedToken = jwt.verify(token, JWT_SECRET_KEY);
-//     const userId = decodedToken.id;
-
-//     try {
-//         // fetch projects the user is part of
-//         const projects = await new Promise((resolve, reject) => {
-//             const query = `
-//                 SELECT p.projectID, p.title, p.description, p.creationDate, p.createdBy, pu.role 
-//                 FROM Project p
-//                 JOIN Project_User pu ON p.projectID = pu.projectID
-//                 WHERE pu.userID = ?`;
-//             db.all(query, [userId], (err, rows) => {
-//                 if (err) reject(err);
-//                 resolve(rows);
-//             });
-//         });
-
-//         // fetch tasks assigned to the user
-//         const tasks = await new Promise((resolve, reject) => {
-//             const query = `
-//                 SELECT t.taskID, t.name, t.status, t.description, t.creationDate, t.createdBy, t.projectID, p.title AS projectTitle 
-//                 FROM Task t
-//                 JOIN Task_User tu ON t.taskID = tu.taskID
-//                 JOIN Project p ON t.projectID = p.projectID
-//                 WHERE tu.userID = ?`;
-//             db.all(query, [userId], (err, rows) => {
-//                 if (err) reject(err);
-//                 resolve(rows);
-//             });
-//         });
-
-//         // Return combined response
-//         res.status(200).json({
-//             userId,
-//             projects,
-//             tasks,
-//         });
-//     } catch (error) {
-//         console.error('Error fetching user dashboard:', error.message);
-//         res.status(500).json({ error: 'Internal server error.' });
-//     }
-// });
-
-
-
-
-
-
-
-// API endpoint to get all projects for the authenticated user
-// app.get('/projects', checkTokenBlacklist, async (req, res) => {
-//     const userId = req.user.id;
-
-//     try {
-//         // get all projects the user is creator of or assigned to
-//         const projects = await new Promise((resolve, reject) => {
-//             const query = `
-//                 SELECT 
-//                     p.projectID, 
-//                     p.title, 
-//                     p.description, 
-//                     p.creationDate, 
-//                     u.username AS createdBy
-//                 FROM Project p
-//                 JOIN User u ON p.createdBy = u.userID
-//                 WHERE p.createdBy = ? 
-//                 OR p.projectID IN (SELECT projectID FROM Project_User WHERE userID = ?)`;
-//             // user is either the creator of the project or is part of the project
-//             db.all(query, [userId, userId], (err, rows) => {
-//                 if (err) reject(err);
-//                 else resolve(rows);
-//             });
-
-//         });
-
-//         res.json({ message: "Fetched projects:", projects });
-//     } catch (error) {
-//         console.error('Error fetching projects:', error);
-//         res.status(500).json({ error: 'Internal server error.' });
-//     }
-// });
-
-
 // API endpoint to get all projects and tasks from the authenticated user
 app.get('/projects-with-tasks', checkTokenBlacklist, async (req, res) => {
     const userId = req.user.id; // extract user ID from the decoded token
@@ -1258,6 +1177,49 @@ app.get('/users', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch users.' });
     }
 });
+
+// API endpoint to get a specific project and assigned users
+app.get('/projects/:projectId', async (req, res) => {
+    const { projectId } = req.params;
+
+    try {
+        const projectQuery = `
+            SELECT projectID, title, description, createdBy, strftime('%Y-%m-%d', creationDate) AS creationDate
+            FROM Project
+            WHERE projectID = ?`;
+        const project = await new Promise((resolve, reject) => {
+            db.get(projectQuery, [projectId], (err, row) => {
+                if (err) reject(err);
+                resolve(row);
+            });
+        });
+
+        if (!project) {
+            return res.status(404).json({ error: 'Project not found.' });
+        }
+
+        const usersQuery = `
+            SELECT 
+                u.userID, 
+                u.username, 
+                pu.role 
+            FROM User u
+            JOIN Project_User pu ON u.userID = pu.userID
+            WHERE pu.projectID = ?`;
+        const assignedUsers = await new Promise((resolve, reject) => {
+            db.all(usersQuery, [projectId], (err, rows) => {
+                if (err) reject(err);
+                resolve(rows);
+            });
+        });
+
+        res.status(200).json({ project, assignedUsers });
+    } catch (error) {
+        console.error('Error fetching project details:', error.message);
+        res.status(500).json({ error: 'Internal server error.' });
+    }
+});
+
 
 // load SSL-certificate files
 const options = {

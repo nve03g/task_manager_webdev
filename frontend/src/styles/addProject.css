@@ -1,27 +1,30 @@
 .add-project-container {
-    max-width: 600px;
-    margin: 0 auto;
-    padding: 20px;
-    background-color: #fff;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 25px;
+    background-color: #f9f9f9;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
 }
 
 .add-project-container h1 {
     text-align: center;
-    margin-bottom: 20px;
+    margin-bottom: 25px;
     color: #333;
+    font-size: 1.8rem;
+    font-weight: 600;
 }
 
 .form-group {
-    margin-bottom: 15px;
+    margin-bottom: 20px;
 }
 
 .form-group label {
     display: block;
-    margin-bottom: 5px;
+    margin-bottom: 8px;
     font-weight: bold;
+    color: #555;
 }
 
 /* Flexbox layout for the form-group containing the label and checkbox */
@@ -34,40 +37,61 @@
 /* Ensure the checkbox and its label align properly */
 .form-check {
     display: flex;
-    /* align-items: flex-start; Align the checkbox to the top */
     align-items: center;
-
-    gap: 5px; /* Add some space between the checkbox and label */
-    /* margin-left: auto; Push the checkbox to the far right */
+    gap: 8px; /* Add some space between the checkbox and label */
     margin-right: 100px;
 }
 
 /* Ensure the checkbox and label align vertically */
 .form-check-input {
-    vertical-align: middle; /* Aligns the checkbox to the middle */
-    margin-top: 0; /* Removes any unnecessary margin */
-    margin-bottom: 0; /* Ensures no extra spacing below */
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    cursor: pointer;
+
+    /* vertical-align: middle; Aligns the checkbox to the middle */
+    /* margin-top: 0; Removes any unnecessary margin */
+    /* margin-bottom: 0; Ensures no extra spacing below */
 }
 
 .form-check-label {
-    margin-bottom: 0; /* Ensure no additional margin at the bottom */
-    line-height: 1; /* Match the line height of the checkbox */
-    vertical-align: middle; /* Align the label vertically with the checkbox */
+    /* margin-bottom: 0; Ensure no additional margin at the bottom */
+    line-height: 1.4; /* Match the line height of the checkbox */
+    /* vertical-align: middle; Align the label vertically with the checkbox */
+    font-size: 0.95rem;
+    color: #666;
 }
 
 /* Adjust the textarea for proper spacing */
 textarea[disabled] {
     background-color: #e9ecef;
     cursor: not-allowed;
+    color: #aaa;
 }
 
 /* General input styling (optional) */
 textarea,
-input {
+input,
+select {
     margin-top: 10px;
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    outline: none;
+    font-size: 1rem;
+    background-color: #fff;
+    transition: border-color 0.3s ease;
 }
 
-.form-group input,
+textarea:focus,
+input:focus,
+select:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 3px rgba(0, 123, 255, 0.3);
+}
+
+/* .form-group input,
 .form-group textarea,
 .form-group select {
     width: 100%;
@@ -76,13 +100,13 @@ input {
     border-radius: 4px;
     outline: none;
     font-size: 1rem;
-}
+} */
 
 .user-entry {
     display: flex;
-    gap: 10px;
+    gap: 12px;
     align-items: center;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
 }
 
 .user-entry input {
@@ -97,24 +121,62 @@ input {
     color: green;
     font-size: 1rem;
     margin-bottom: 10px;
+    text-align: center;
 }
 
 .error-message {
     color: red;
     font-size: 1rem;
-    margin-bottom: 10px;
+    margin-bottom: 15px;
+    text-align: center;
 }
 
 .submit-button {
     background-color: #007bff;
     color: white;
-    padding: 10px;
+    padding: 12px 20px;
     border: none;
-    border-radius: 4px;
+    border-radius: 5px;
     cursor: pointer;
-    transition: background-color 0.3s ease;
+    font-size: 1rem;
+    font-weight: bold;;
+    transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
 .submit-button:hover {
     background-color: #0056b3;
+    transform: scale(1.02);
+}
+
+.submit-button:active {
+    background-color: #004085;
+    transform: scale(1); /* Reset zoom on click */
+}
+
+/* List styles for assigned users */
+.list-group {
+    margin-top: 15px;
+    list-style: none;
+    padding: 0;
+}
+
+.list-group-item {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 10px 15px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.list-group-item strong {
+    font-weight: bold;
+    color: #333;
+}
+
+.list-group-item .text-muted {
+    font-size: 0.9rem;
+    color: #666;
 }

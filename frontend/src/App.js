@@ -10,6 +10,7 @@ import Login from './pages/Login';
 import SignUp from './pages/SignUp';
 import PrivateRoute from './PrivateRoute';
 import AddProject from './pages/AddProject';
+import EditProject from './pages/EditProject';
 
 
 function App() {
@@ -48,6 +49,16 @@ function App() {
             <PrivateRoute>
               <Navbar />
               <AddProject />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/edit-project/:projectId"
+          element={
+            <PrivateRoute>
+              <Navbar />
+              <EditProject />
             </PrivateRoute>
           }
         />
