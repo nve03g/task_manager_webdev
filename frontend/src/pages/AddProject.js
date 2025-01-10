@@ -6,6 +6,7 @@ import '../styles/addProject.css';
 const AddProject = () => {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
+    const [useNoDescription, setUseNoDescription] = useState(false); // State for "No Description"
     const [users, setUsers] = useState([]); // list of all users from the database
     const [assignedUsers, setAssignedUsers] = useState([{ userId: '', role: 'general' }]); // users assigned to the project
     const [message, setMessage] = useState(null);
@@ -60,7 +61,11 @@ const AddProject = () => {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${authToken}`
                 },
-                body: JSON.stringify({ title, description, users: assignedUsers }),
+                body: JSON.stringify({
+                    title,
+                    description: useNoDescription ? 'No Description' : description,
+                    users: assignedUsers
+                }),
             });
 
             const data = await response.json();
@@ -71,49 +76,64 @@ const AddProject = () => {
             } else {
                 setError(data.error || 'Failed to create project.');
             }
-
-            // setMessage('Project created successfully!');
-            // console.log('Submitted data:', { title, description, users: selectedUsers });
-            // setTimeout(() => navigate('/dashboard'), 2000); // redirect to dashboard after 2 seconds
         } catch (err) {
             setError('An error occurred. Please try again.');
         }
     };
 
     return (
-        <div className="add-project-container">
+        <div className="add-project-container container mt-4">
             <h1>Create New Project</h1>
             {message && <p className="success-message">{message}</p>}
             {error && <p className="error-message">{error}</p>}
             <form onSubmit={handleSubmit}>
-                <div className="form-group">
+                <div className="form-group mb-3">
                     <label htmlFor="title">Project Title</label>
                     <input
                         type="text"
                         id="title"
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
+                        className="form-control"
                         required
                     />
                 </div>
-                <div className="form-group">
+                <div className="form-group mb-3">
                     <label htmlFor="description">Project Description</label>
                     <textarea
                         id="description"
-                        value={description}
+                        value={useNoDescription ? '' : description}
                         onChange={(e) => setDescription(e.target.value)}
-                        required
+                        className="form-control"
+                        disabled={useNoDescription} // Disable textarea if "No Description" is selected
+                        placeholder="Write your project description here"
                     />
+                    <div className="form-check mt-2">
+                        {/* <label>No Description</label> */}
+                        <label>
+                            <input
+                                type="checkbox"
+                                id="noDescription"
+                                name="myCheckBox"
+                                className="form-check-input"
+                                checked={useNoDescription}
+                                onChange={(e) => setUseNoDescription(e.target.checked)}
+                            />
+                        </label>
+
+                        <label htmlFor="noDescription" className="form-check-label">
+                            No Description
+                        </label>
+                    </div>
                 </div>
-                <div className="form-group">
+                <div className="form-group mb-3">
                     <label>Assign Users</label>
                     {assignedUsers.map((user, index) => (
-                        <div key={index} className="user-entry">
+                        <div key={index} className="d-flex gap-2 align-items-center mb-2">
                             <select
                                 value={user.userId}
-                                onChange={(e) =>
-                                    handleAssignedUserChange(index, 'userId', e.target.value)
-                                }
+                                onChange={(e) => handleAssignedUserChange(index, 'userId', e.target.value)}
+                                className="form-select"
                             >
                                 <option value="">Select a user</option>
                                 {users.map((userOption) => (
@@ -124,9 +144,8 @@ const AddProject = () => {
                             </select>
                             <select
                                 value={user.role}
-                                onChange={(e) =>
-                                    handleAssignedUserChange(index, 'role', e.target.value)
-                                }
+                                onChange={(e) => handleAssignedUserChange(index, 'role', e.target.value)}
+                                className="form-select"
                             >
                                 <option value="general">General</option>
                                 <option value="admin">Admin</option>
@@ -134,17 +153,18 @@ const AddProject = () => {
                             <button
                                 type="button"
                                 onClick={() => handleRemoveAssignedUser(index)}
+                                className="btn btn-danger"
                                 disabled={assignedUsers.length === 1}
                             >
                                 Remove
                             </button>
                         </div>
                     ))}
-                    <button type="button" onClick={handleAddAssignedUser}>
+                    <button type="button" onClick={handleAddAssignedUser} className="btn btn-secondary mt-2">
                         Add User
                     </button>
                 </div>
-                <button type="submit" className="submit-button">
+                <button type="submit" className="btn btn-primary">
                     Create Project
                 </button>
             </form>

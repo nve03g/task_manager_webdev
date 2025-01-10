@@ -24,6 +24,49 @@
     font-weight: bold;
 }
 
+/* Flexbox layout for the form-group containing the label and checkbox */
+.form-group.d-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Ensure the checkbox and its label align properly */
+.form-check {
+    display: flex;
+    /* align-items: flex-start; Align the checkbox to the top */
+    align-items: center;
+
+    gap: 5px; /* Add some space between the checkbox and label */
+    /* margin-left: auto; Push the checkbox to the far right */
+    margin-right: 100px;
+}
+
+/* Ensure the checkbox and label align vertically */
+.form-check-input {
+    vertical-align: middle; /* Aligns the checkbox to the middle */
+    margin-top: 0; /* Removes any unnecessary margin */
+    margin-bottom: 0; /* Ensures no extra spacing below */
+}
+
+.form-check-label {
+    margin-bottom: 0; /* Ensure no additional margin at the bottom */
+    line-height: 1; /* Match the line height of the checkbox */
+    vertical-align: middle; /* Align the label vertically with the checkbox */
+}
+
+/* Adjust the textarea for proper spacing */
+textarea[disabled] {
+    background-color: #e9ecef;
+    cursor: not-allowed;
+}
+
+/* General input styling (optional) */
+textarea,
+input {
+    margin-top: 10px;
+}
+
 .form-group input,
 .form-group textarea,
 .form-group select {
