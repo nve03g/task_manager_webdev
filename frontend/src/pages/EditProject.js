@@ -12,10 +12,11 @@ const EditProject = () => {
     const [error, setError] = useState(null);
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
-    const [alreadyAssignedUsers, setAlreadyAssignedUsers] = useState([]); // users already assigned to the project
-    const [newlyAssignedUsers, setNewlyAssignedUsers] = useState([{ userId: '', role: 'general' }]); // users newly assigned to the project
     const [useNoDescription, setUseNoDescription] = useState(false);
     const [users, setUsers] = useState([]); // list of all users from the database
+    const [alreadyAssignedUsers, setAlreadyAssignedUsers] = useState([]); // users already assigned to the project
+    const [newlyAssignedUsers, setNewlyAssignedUsers] = useState([{ userId: '', role: 'general' }]); // users newly assigned to the project
+    const [editingRole, setEditingRole] = useState(null); // to track which user's role is being edited
     const [message, setMessage] = useState(null);
     const navigate = useNavigate();
 
@@ -91,14 +92,46 @@ const EditProject = () => {
     }
 
     // for already assigned users
-    const handleAlreadyAssignedUserChange = (index, field, value) => {
+    const handleAlreadyAssignedUserChange = async (index, field, value) => {
         const updatedUsers = [...alreadyAssignedUsers];
+
+        // prevent changing the role of the project creator
         if (field === 'role' && updatedUsers[index].userId === createdBy) {
             setError('Cannot modify the role of the project creator.');
             return;
         }
+
+        // update the role
         updatedUsers[index][field] = value;
         setAlreadyAssignedUsers(updatedUsers);
+
+        // send a request to update the user's role in the database
+        try {
+            const response = await fetch(`https://localhost:443/projects/${projectId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${authToken}`,
+                },
+                body: JSON.stringify({
+                    users: updatedUsers.map((user) => ({
+                        userId: user.userId,
+                        role: user.role,
+                    })),
+                }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                setMessage('Role updated successfully.');
+            } else {
+                setError(data.error || 'Failed to update role.');
+            }
+        } catch (err) {
+            console.error('Error updating role:', err);
+            setError('An error occurred while updating the role.');
+        }
     };
 
     const handleRemoveAlreadyAssignedUser = async (userId) => {
@@ -320,7 +353,18 @@ const EditProject = () => {
                                     </div>
                                     {/* Role */}
                                     <div className='user-role'>
-                                        <span className="text-muted">{user.role}</span>
+                                        {isAdmin && user.userId !== createdBy ? (
+                                            <select
+                                                value={user.role}
+                                                onChange={(e) => handleAlreadyAssignedUserChange(index, 'role', e.target.value)}
+                                                className="form-select"
+                                            >
+                                                <option value="general">General</option>
+                                                <option value="admin">Admin</option>
+                                            </select>
+                                        ) : (
+                                            <span className='text-muted'>{user.role}</span>
+                                        )}
                                     </div>
                                     {/* Remove Button */}
                                     {isAdmin && user.userId !== createdBy && (

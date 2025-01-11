@@ -171,14 +171,20 @@ select:focus {
     background-color: #fff;
 } */
 
-.list-group-item {
+/* .list-group-item {
     display: grid;
-    grid-template-columns: 1fr 1fr auto; /* Three sections: username, role, button */
+    grid-template-columns: 1fr 1fr auto; Three sections: username, role, button
     align-items: center;
     padding: 10px 15px;
     border: 1px solid #ddd;
     border-radius: 4px;
-    margin-bottom: 10px; /* Space between rows */
+    margin-bottom: 10px; Space between rows
+} */
+
+.list-group-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
 .list-group-item strong {
@@ -193,8 +199,18 @@ select:focus {
     color: #666;
 }
 
-.list-group-item button {
+.list-group-item .user-name {
+    margin-right: auto;
+}
+
+.list-group-item button,
+.user-entry button {
+    margin: 0;
     margin-left: 10px;
+    padding: 8px 12px;
+    vertical-align: middle;
+    height: auto;
+    align-self: center;
 }
 
 .user-name {
@@ -204,6 +220,12 @@ select:focus {
 .user-role {
     text-align: center; /* Role appears in the center */
 }
+
+.user-role select {
+    width: 120px; /* Adjust width as necessary */
+    text-align: left;
+}
+
 
 .remove-button {
     text-align: right; /* Button aligns to the far right */
@@ -220,3 +242,4 @@ select:focus {
     background-color: #c82333;
     color: white;
 }
+
