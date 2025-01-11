@@ -148,6 +148,8 @@ const EditProject = () => {
         e.preventDefault();
 
         try {
+            setError(null); // clear previous error (if any)
+
             // filter out users with empty IDs
             const allAssignedUsers = [
                 ...alreadyAssignedUsers,
@@ -170,12 +172,15 @@ const EditProject = () => {
             const data = await response.json();
 
             if (response.ok) {
+                setError(null);
                 setMessage('Project updated successfully!');
                 setTimeout(() => navigate('/dashboard'), 2000);
             } else {
+                setMessage(null);
                 setError(data.error || 'Failed to update project.');
             }
         } catch (err) {
+            setMessage(null);
             setError('An error occurred. Please try again.');
         }
     };
@@ -209,7 +214,7 @@ const EditProject = () => {
     return (
         <div className="add-project-container container mt-4">
             <h1>Edit Project</h1>
-            {message && <p className="success-message">{message}</p>}
+            {message && !error && <p className="success-message">{message}</p>}
             {error && <p className="error-message">{error}</p>}
             <form onSubmit={handleSubmit}>
                 {/* Project Title */}

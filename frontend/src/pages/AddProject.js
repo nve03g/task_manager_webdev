@@ -55,6 +55,8 @@ const AddProject = () => {
         e.preventDefault();
 
         try {
+            setError(null); // clear previous error (if any)
+
             const response = await fetch('https://localhost:443/projects', {
                 method: 'POST',
                 headers: {
@@ -71,12 +73,15 @@ const AddProject = () => {
             const data = await response.json();
 
             if (response.ok) {
+                setError(null);
                 setMessage('Project created successfully!');
                 setTimeout(() => navigate('/dashboard'), 2000);
             } else {
+                setMessage(null);
                 setError(data.error || 'Failed to create project.');
             }
         } catch (err) {
+            setMessage(null);
             setError('An error occurred. Please try again.');
         }
     };
@@ -84,7 +89,7 @@ const AddProject = () => {
     return (
         <div className="add-project-container container mt-4">
             <h1>Create New Project</h1>
-            {message && <p className="success-message">{message}</p>}
+            {message && !error && <p className="success-message">{message}</p>}
             {error && <p className="error-message">{error}</p>}
             <form onSubmit={handleSubmit}>
                 <div className="form-group mb-3">
