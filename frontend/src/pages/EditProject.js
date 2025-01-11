@@ -384,22 +384,22 @@ const EditProject = () => {
                     </ul>
                 </div>
 
-                {/* Save Changes */}
-                <button type="submit" className="btn btn-primary" disabled={!isAdmin}>
-                    Save Changes
-                </button>
+                <div className='d-flex justify-content-between align-items-center mt-4'>
+                    {/* Save Changes */}
+                    <button type="submit" className="btn btn-primary" disabled={!isAdmin}>
+                        Save Changes
+                    </button>
 
-                {/* Delete Project */}
-                <div className='mt-4'>
-                    {isAdmin && (
-                        <button
-                            type="button"
-                            onClick={handleDeleteProject}
-                            className="btn btn-danger"
-                        >
-                            Delete Project
-                        </button>
-                    )}
+                    {/* Delete Project */}
+                        {isAdmin && (
+                            <button
+                                type="button"
+                                onClick={handleDeleteProject}
+                                className="btn btn-danger"
+                            >
+                                Delete Project
+                            </button>
+                        )}
                 </div>
             </form>
         </div>
