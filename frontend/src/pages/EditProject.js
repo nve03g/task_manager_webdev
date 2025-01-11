@@ -180,6 +180,32 @@ const EditProject = () => {
         }
     };
 
+    // for deleting the project
+    const handleDeleteProject = async () => {
+        if (window.confirm('Are you sure you want to delete this project? This action cannot be undone.')) {
+            try {
+                const response = await fetch(`https://localhost:443/projects/${projectId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        Authorization: `Bearer ${authToken}`,
+                    },
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    setMessage(data.message || 'Project deleted successfully.');
+                    setTimeout(() => navigate('/dashboard'), 2000);
+                } else {
+                    setError(data.error || 'Failed to delete project.');
+                }
+            } catch (err) {
+                console.error('Error deleting project:', err);
+                setError('An error occurred while deleting the project.');
+            }
+        }
+    };
+
     return (
         <div className="add-project-container container mt-4">
             <h1>Edit Project</h1>
@@ -306,6 +332,19 @@ const EditProject = () => {
                 <button type="submit" className="btn btn-primary" disabled={!isAdmin}>
                     Save Changes
                 </button>
+
+                {/* Delete Project */}
+                <div className='mt-4'>
+                    {isAdmin && (
+                        <button
+                            type="button"
+                            onClick={handleDeleteProject}
+                            className="btn btn-danger"
+                        >
+                            Delete Project
+                        </button>
+                    )}
+                </div>
             </form>
         </div>
     );

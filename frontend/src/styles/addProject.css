@@ -208,3 +208,15 @@ select:focus {
 .remove-button {
     text-align: right; /* Button aligns to the far right */
 }
+
+/* Delete project button styles */
+.btn-danger {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+}
+
+.btn-danger:hover {
+    background-color: #c82333;
+    color: white;
+}
