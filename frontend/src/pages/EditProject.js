@@ -75,7 +75,6 @@ const EditProject = () => {
                     setIsAdmin(currentUserRole === 'admin');
                 } else {
                     throw new Error(data.error || 'Failed to fetch project details.');
-                    // setError(data.error || 'Failed to fetch project details.');
                 }
             } catch (err) {
                 console.error('Error fetching project details:', err);
@@ -102,12 +101,32 @@ const EditProject = () => {
         setAlreadyAssignedUsers(updatedUsers);
     };
 
-    const handleRemoveAlreadyAssignedUser = (index) => {
-        if (alreadyAssignedUsers[index].userId === createdBy) {
-            setError('Cannot remove the project creator.');
-            return;
+    const handleRemoveAlreadyAssignedUser = async (userId) => {
+        if (window.confirm('Are you sure you want to remove this user from the project?')) {
+            try {
+                const response = await fetch(`https://localhost:443/projects/${projectId}/users/${userId}`,
+                    {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${authToken}`,
+                        },
+                    }
+                );
+
+                const data = await response.json();
+                if (response.ok) {
+                    setMessage(data.message || 'User removed successfully!');
+                    setAlreadyAssignedUsers((prev) =>
+                        prev.filter((user) => user.userId !== userId));
+                } else {
+                    setError(data.error || 'Failed to remove user from project.');
+                }
+            } catch (err) {
+                console.error('Error removing user:', err);
+                setError('An error occurred whilt removing the user.');
+            }
         }
-        setAlreadyAssignedUsers(alreadyAssignedUsers.filter((_, i) => i !== index));
     };
 
     // for newly assigned users
@@ -124,7 +143,7 @@ const EditProject = () => {
     const handleRemoveNewAssignedUser = (index) => {
         setNewlyAssignedUsers(newlyAssignedUsers.filter((_, i) => i !== index));
     };
-    
+
     const handleSubmit = async (e) => {
         e.preventDefault();
 
@@ -255,14 +274,28 @@ const EditProject = () => {
                         {alreadyAssignedUsers.map((user, index) => {
                             // match user by converting both ID's to strings
                             const matchedUser = users.find((u) => String(u.userID) === String(user.userId));
-                            console.log('Matching userId:', user.userId, 'with userID:', users.map((u) => u.userID));
-                            console.log('Matched User:', matchedUser);  
                             return (
-                                <li key={user.userId || index} className="list-group-item d-flex align-items-center">
-                                    <strong className="me-auto">
-                                        {matchedUser ? matchedUser.username : 'Unknown User'}
-                                    </strong>
-                                    <span className="text-muted">{user.role}</span>
+                                <li key={user.userId || index} className="list-group-item d-flex align-items-center justify-content-between">
+                                    {/* Username */}
+                                    <div className='user-name'>
+                                        <strong>{matchedUser ? matchedUser.username : 'Unknown User'}</strong>
+                                    </div>
+                                    {/* Role */}
+                                    <div className='user-role'>
+                                        <span className="text-muted">{user.role}</span>
+                                    </div>
+                                    {/* Remove Button */}
+                                    {isAdmin && user.userId !== createdBy && (
+                                        <div className='remove-button'>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveAlreadyAssignedUser(user.userId)}
+                                                className="btn btn-danger btn-sm"
+                                            >
+                                                Remove
+                                            </button>
+                                        </div>
+                                    )}
                                 </li>
                             );
                         })}
