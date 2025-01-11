@@ -54,6 +54,13 @@ const AddProject = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
+        // validate description if "no description" is not selected
+        if (!useNoDescription && description.trim() === '') {
+            setMessage(null);
+            setError('Please enter a description for the project.');
+            return; // stop submission if description is empty
+        }
+
         try {
             setError(null); // clear previous error (if any)
 
