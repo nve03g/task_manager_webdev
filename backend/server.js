@@ -1,6 +1,8 @@
 // to run this file: node server.js
 
 const express = require('express');
+const swaggerJsdoc = require('swagger-jsdoc');
+const swaggerUi = require('swagger-ui-express');
 const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const https = require('https');
@@ -30,7 +32,7 @@ client.on('error', (err) => {
     }
 })();
 
-// middleware
+// **********---------------------- MIDDLEWARE ----------------------**********
 app.use(cors());
 app.use(express.json()); // to parse json
 app.use((req, res, next) => { // verkeer naar HTTPS forceren
@@ -39,6 +41,28 @@ app.use((req, res, next) => { // verkeer naar HTTPS forceren
     }
     next();
 });
+// Swagger configuratie
+const swaggerOptions = {
+    definition: {
+        openapi: '3.0.0',
+        info: {
+            title: 'Task Management API',
+            version: '1.0.0',
+            description: 'API-documentation for the task management application',
+        },
+        servers: [
+            {
+                url: 'https://localhost:443',
+                description: 'Development server',
+            },
+        ],
+    },
+    apis: ['./server.js'],
+};
+
+const swaggerDocs = swaggerJsdoc(swaggerOptions);
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+
 const checkTokenBlacklist = async (req, res, next) => { // middleware to check token validity
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
@@ -92,6 +116,55 @@ const formatDate = (isoDate) => {
 
 // **********---------------------- FUNCTIONAL ENDPOINTS ----------------------**********
 
+/**
+ * @swagger
+ * /login:
+ *   post:
+ *     summary: Log in a user
+ *     description: Authenticates a user with their username and password and returns a JSON Web Token (JWT).
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 description: The username of the user.
+ *               password:
+ *                 type: string
+ *                 description: The password of the user.
+ *     responses:
+ *       200:
+ *         description: Login successful. Returns a JWT and user data.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Login successful.
+ *                 token:
+ *                   type: string
+ *                   description: The JWT for authenticated requests.
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     username:
+ *                       type: string
+ *                     password:
+ *                       type: string
+ *       400:
+ *         description: Bad request. Missing username or password.
+ *       401:
+ *         description: Unauthorized. Invalid username or password.
+ *       500:
+ *         description: Internal server error.
+ */
 // API endpoint to login user
 app.post('/login', async (req, res) => { // use async function for handling database queries or API calls
     // handle user login
@@ -132,6 +205,30 @@ app.post('/login', async (req, res) => { // use async function for handling data
     }
 });
 
+/**
+ * @swagger
+ * /logout:
+ *   post:
+ *     summary: Log out a user
+ *     description: Invalidates the user's token by adding it to a blacklist.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Logout successful.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Logout successful.
+ *       400:
+ *         description: Bad request. Token missing or invalid.
+ *       500:
+ *         description: Internal server error.
+ */
 // API endpoint to logout user
 app.post('/logout', (req, res) => { // no need to use async function, because no database operations
     /* chosen strategy for user logout: token invalidation (blacklist)
@@ -169,6 +266,41 @@ app.post('/logout', (req, res) => { // no need to use async function, because no
     }
 });
 
+/**
+ * @swagger
+ * /signup:
+ *   post:
+ *     summary: Register a new user
+ *     description: Creates a new user account with a hashed password.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 description: The username of the new user.
+ *               password:
+ *                 type: string
+ *                 description: The password for the new account.
+ *     responses:
+ *       201:
+ *         description: User created successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: User created successfully.
+ *       400:
+ *         description: Bad request. Missing username or password, or username already exists.
+ *       500:
+ *         description: Internal server error.
+ */
 // API endpoint to sign up new user
 app.post('/signup', async (req, res) => {
     const { username, password } = req.body;
@@ -211,6 +343,68 @@ app.post('/signup', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /projects:
+ *   post:
+ *     summary: Create a new project and assign users
+ *     description: Creates a new project and assigns users with their respective roles. The creator is automatically assigned as an admin.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 description: The title of the project.
+ *               description:
+ *                 type: string
+ *                 description: The description of the project.
+ *               users:
+ *                 type: array
+ *                 description: An array of users with roles.
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     userId:
+ *                       type: integer
+ *                       description: The ID of the user to be assigned.
+ *                     role:
+ *                       type: string
+ *                       description: The role of the user (e.g., admin, general).
+ *     responses:
+ *       201:
+ *         description: Project created successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Project created successfully.
+ *                 project:
+ *                   type: object
+ *                   properties:
+ *                     projectID:
+ *                       type: integer
+ *                     title:
+ *                       type: string
+ *                     description:
+ *                       type: string
+ *                     createdBy:
+ *                       type: integer
+ *                     creationDate:
+ *                       type: string
+ *                       format: date
+ *                       example: "dd/mm/yyyy"
+ *       400:
+ *         description: Bad request. Missing or invalid input data.
+ *       500:
+ *         description: Internal server error.
+ */
 // API endpoint to make new project, while also assigning users and their roles
 app.post('/projects', async (req, res) => {
     const { title, description, users } = req.body; // `users` is an array of objects: { userId, role }
@@ -311,6 +505,77 @@ app.post('/projects', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /projects/{projectId}:
+ *   put:
+ *     summary: Update project details
+ *     description: Updates project title, description, or assigns users with their respective roles. Only administrators can perform this action.
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         description: ID of the project to update.
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 description: The new title for the project.
+ *               description:
+ *                 type: string
+ *                 description: The new description for the project.
+ *               users:
+ *                 type: array
+ *                 description: An array of users with roles to update or assign.
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     userId:
+ *                       type: integer
+ *                       description: The ID of the user.
+ *                     role:
+ *                       type: string
+ *                       description: The role of the user (e.g., admin, general).
+ *     responses:
+ *       200:
+ *         description: Project updated successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Project updated successfully.
+ *                 updatedProject:
+ *                   type: object
+ *                   properties:
+ *                     projectID:
+ *                       type: integer
+ *                     title:
+ *                       type: string
+ *                     description:
+ *                       type: string
+ *                     createdBy:
+ *                       type: integer
+ *                     creationDate:
+ *                       type: string
+ *                       format: date
+ *                       example: "dd/mm/yyyy"
+ *       400:
+ *         description: Bad request. Missing or invalid input data.
+ *       403:
+ *         description: Forbidden. Only administrators can update project details.
+ *       500:
+ *         description: Internal server error.
+ */
 // API endpoint to edit/update project details (title, assigned users and their roles)
 app.put('/projects/:projectId', async (req, res) => {
     const { projectId } = req.params;
@@ -469,6 +734,45 @@ app.put('/projects/:projectId', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /projects/{projectId}/users/{userId}:
+ *   delete:
+ *     summary: Remove a user from a project
+ *     description: Deletes a user from a project, except for the original admin.
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         description: ID of the project.
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: ID of the user to remove.
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: User removed from the project successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: User deleted from project successfully.
+ *       400:
+ *         description: Bad request. Cannot delete the original admin or invalid parameters.
+ *       403:
+ *         description: Forbidden. Only administrators can delete users.
+ *       404:
+ *         description: User not found in the project.
+ *       500:
+ *         description: Internal server error.
+ */
 // API endpoint to delete users from a project (except from original admin)
 app.delete('/projects/:projectId/users/:userId', async (req, res) => {
     const { projectId, userId } = req.params;
@@ -556,6 +860,37 @@ app.delete('/projects/:projectId/users/:userId', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /projects/{projectId}:
+ *   delete:
+ *     summary: Delete a project and all its dependencies
+ *     description: Deletes a project, including all associated tasks, task-user assignments, and project-user assignments. Only administrators can perform this action.
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         description: ID of the project to delete.
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Project and all its dependencies deleted successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Project and all its dependencies deleted successfully.
+ *       403:
+ *         description: Forbidden. Only administrators can delete the project.
+ *       404:
+ *         description: Project not found.
+ *       500:
+ *         description: Internal server error.
+ */
 // API endpoint to delete a project and all its dependencies
 app.delete('/projects/:projectId', async (req, res) => {
     const { projectId } = req.params;
@@ -656,6 +991,79 @@ app.delete('/projects/:projectId', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /projects/{projectId}/tasks:
+ *   post:
+ *     summary: Add a task to a project
+ *     description: Creates a new task in a project, assigns users to the task, and ensures the assigned users are part of the project. Only administrators can perform this action.
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         description: ID of the project to add the task to.
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: The name of the task.
+ *               status:
+ *                 type: string
+ *                 description: The status of the task (e.g., in progress, A, B).
+ *               assignedUserIds:
+ *                 type: array
+ *                 description: An array of user IDs to assign to the task.
+ *                 items:
+ *                   type: integer
+ *               description:
+ *                 type: string
+ *                 description: Optional description of the task.
+ *     responses:
+ *       201:
+ *         description: Task created successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Task created successfully.
+ *                 task:
+ *                   type: object
+ *                   properties:
+ *                     taskID:
+ *                       type: integer
+ *                     name:
+ *                       type: string
+ *                     status:
+ *                       type: string
+ *                     description:
+ *                       type: string
+ *                     projectID:
+ *                       type: integer
+ *                     createdBy:
+ *                       type: integer
+ *                     creationDate:
+ *                       type: string
+ *                       format: date
+ *                       example: "dd/mm/yyyy"
+ *       400:
+ *         description: Bad request. Missing or invalid input data.
+ *       403:
+ *         description: Forbidden. Only administrators can add tasks to the project.
+ *       404:
+ *         description: Project not found.
+ *       500:
+ *         description: Internal server error.
+ */
 // API endpoint to add a task to a project
 app.post('/projects/:projectId/tasks', async (req, res) => {
     const { projectId } = req.params;
@@ -770,6 +1178,80 @@ app.post('/projects/:projectId/tasks', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /projects/{projectId}/tasks/{taskId}:
+ *   put:
+ *     summary: Update task details
+ *     description: Updates the details of a specific task within a project. Only administrators can update the task name or description. Assigned users can only update the task status.
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         description: ID of the project the task belongs to.
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: taskId
+ *         required: true
+ *         description: ID of the task to update.
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: The new name of the task.
+ *               status:
+ *                 type: string
+ *                 description: The new status of the task (e.g., pending, in progress, completed).
+ *               description:
+ *                 type: string
+ *                 description: The new description of the task.
+ *     responses:
+ *       200:
+ *         description: Task updated successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Task updated successfully.
+ *                 updatedTask:
+ *                   type: object
+ *                   properties:
+ *                     taskID:
+ *                       type: integer
+ *                     name:
+ *                       type: string
+ *                     status:
+ *                       type: string
+ *                     description:
+ *                       type: string
+ *                     projectID:
+ *                       type: integer
+ *                     createdBy:
+ *                       type: integer
+ *                     creationDate:
+ *                       type: string
+ *                       format: date
+ *                       example: "dd/mm/yyyy"
+ *       400:
+ *         description: Bad request. Missing or invalid input data.
+ *       403:
+ *         description: Forbidden. Only administrators or assigned users can update the task. Assigned users can only update the status.
+ *       404:
+ *         description: Task not found in the project.
+ *       500:
+ *         description: Internal server error.
+ */
 // API endpoint to edit/update task details (name, status, description)
 app.put('/projects/:projectId/tasks/:taskId', async (req, res) => {
     const { projectId, taskId } = req.params;
@@ -872,6 +1354,45 @@ app.put('/projects/:projectId/tasks/:taskId', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /tasks/{taskId}/users/{userId}:
+ *   delete:
+ *     summary: Remove a user from a task
+ *     description: Deletes a user from a task, ensuring the task still has at least one assigned user. Only administrators can perform this action.
+ *     parameters:
+ *       - in: path
+ *         name: taskId
+ *         required: true
+ *         description: ID of the task.
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: ID of the user to remove from the task.
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: User removed from the task successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: User removed from task successfully.
+ *       400:
+ *         description: Bad request. Cannot remove the last assigned user.
+ *       403:
+ *         description: Forbidden. Only administrators can remove users from a task.
+ *       404:
+ *         description: Task or user not found.
+ *       500:
+ *         description: Internal server error.
+ */
 // API endpoint to delete user from a task
 app.delete('/tasks/:taskId/users/:userId', async (req, res) => {
     const { taskId, userId } = req.params;
@@ -956,6 +1477,43 @@ app.delete('/tasks/:taskId/users/:userId', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /projects/{projectId}/tasks/{taskId}:
+ *   delete:
+ *     summary: Delete a task from a project
+ *     description: Deletes a specific task from a project, including all associated task-user relationships. Only administrators can perform this action.
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         description: ID of the project the task belongs to.
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: taskId
+ *         required: true
+ *         description: ID of the task to delete.
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Task deleted successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Task deleted successfully.
+ *       403:
+ *         description: Forbidden. Only administrators can delete tasks.
+ *       404:
+ *         description: Task not found in this project.
+ *       500:
+ *         description: Internal server error.
+ */
 // API endpoint to delete task from project
 app.delete('/projects/:projectId/tasks/:taskId', async (req, res) => {
     const { projectId, taskId } = req.params;
@@ -1038,7 +1596,40 @@ app.delete('/projects/:projectId/tasks/:taskId', async (req, res) => {
     }
 });
 
-
+/**
+ * @swagger
+ * /validate-token:
+ *   post:
+ *     summary: Validate a token
+ *     description: Validates a token to ensure it is not blacklisted and returns user details if valid. This endpoint is used by the frontend to verify the token's validity.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Token is valid.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Token is valid.
+ *                 user:
+ *                   type: object
+ *                   description: Details of the user extracted from the token.
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       description: The user's ID.
+ *                     username:
+ *                       type: string
+ *                       description: The user's username.
+ *       401:
+ *         description: Unauthorized. The token is invalid or blacklisted.
+ *       500:
+ *         description: Internal server error.
+ */
 // API endpoint to validate token (used by frontend)
 app.post('/validate-token', checkTokenBlacklist, (req, res) => {
     // If the token is valid, the middleware (checkTokenBlacklist) will call `next()` and this handler will be executed
@@ -1051,6 +1642,72 @@ app.post('/validate-token', checkTokenBlacklist, (req, res) => {
 
 // **********---------------------- DESIGN ENDPOINTS ----------------------**********
 
+/**
+ * @swagger
+ * /projects-with-tasks:
+ *   get:
+ *     summary: Get all projects and tasks of the authenticated user
+ *     description: Fetches all projects where the user is either the creator or a participant, along with the tasks assigned to the user in those projects.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully fetched projects and tasks.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 projects:
+ *                   type: array
+ *                   description: A list of projects with their tasks.
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       projectID:
+ *                         type: integer
+ *                         description: The ID of the project.
+ *                       title:
+ *                         type: string
+ *                         description: The title of the project.
+ *                       description:
+ *                         type: string
+ *                         description: The description of the project.
+ *                       creationDate:
+ *                         type: string
+ *                         format: date
+ *                         description: The creation date of the project.
+ *                       createdBy:
+ *                         type: string
+ *                         description: The username of the project's creator.
+ *                       tasks:
+ *                         type: array
+ *                         description: A list of tasks associated with the project.
+ *                         items:
+ *                           type: object
+ *                           properties:
+ *                             taskID:
+ *                               type: integer
+ *                               description: The ID of the task.
+ *                             name:
+ *                               type: string
+ *                               description: The name of the task.
+ *                             status:
+ *                               type: string
+ *                               description: The status of the task.
+ *                             description:
+ *                               type: string
+ *                               description: The description of the task.
+ *                             creationDate:
+ *                               type: string
+ *                               format: date
+ *                               description: The creation date of the task.
+ *                             projectID:
+ *                               type: integer
+ *                               description: The ID of the project the task belongs to.
+ *       500:
+ *         description: Internal server error.
+ */
 // API endpoint to get all projects and tasks from the authenticated user
 app.get('/projects-with-tasks', checkTokenBlacklist, async (req, res) => {
     const userId = req.user.id; // extract user ID from the decoded token
@@ -1109,13 +1766,82 @@ app.get('/projects-with-tasks', checkTokenBlacklist, async (req, res) => {
             tasks: projectTaskMap[project.projectID] || []
         }));
 
-        res.status(200).json({ projects: projectsWithTasks});
+        res.status(200).json({ projects: projectsWithTasks });
     } catch (error) {
         console.error('Error fetching projects with tasks:', error.message);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
 
+/**
+ * @swagger
+ * /profile:
+ *   get:
+ *     summary: Get user-specific data for their profile
+ *     description: Fetches data specific to the authenticated user, including projects they have created, projects they are assigned to, and the total number of tasks assigned to them.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully fetched user profile data.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 username:
+ *                   type: string
+ *                   description: The username of the authenticated user.
+ *                 createdProjects:
+ *                   type: array
+ *                   description: A list of projects created by the user.
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       projectID:
+ *                         type: integer
+ *                         description: The ID of the project.
+ *                       title:
+ *                         type: string
+ *                         description: The title of the project.
+ *                       description:
+ *                         type: string
+ *                         description: The description of the project.
+ *                       creationDate:
+ *                         type: string
+ *                         format: date
+ *                         description: The creation date of the project.
+ *                       createdBy:
+ *                         type: integer
+ *                         description: The ID of the user who created the project.
+ *                 assignedProjects:
+ *                   type: array
+ *                   description: A list of projects the user is assigned to.
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       projectID:
+ *                         type: integer
+ *                         description: The ID of the project.
+ *                       title:
+ *                         type: string
+ *                         description: The title of the project.
+ *                       description:
+ *                         type: string
+ *                         description: The description of the project.
+ *                       creationDate:
+ *                         type: string
+ *                         format: date
+ *                         description: The creation date of the project.
+ *                       createdBy:
+ *                         type: integer
+ *                         description: The ID of the user who created the project.
+ *                 assignedTasksCount:
+ *                   type: integer
+ *                   description: The total number of tasks assigned to the user.
+ *       500:
+ *         description: Internal server error.
+ */
 // API endpoint to get user specific data (for profile)
 app.get('/profile', checkTokenBlacklist, async (req, res) => {
     const userId = req.user.id;
@@ -1160,6 +1886,35 @@ app.get('/profile', checkTokenBlacklist, async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /users:
+ *   get:
+ *     summary: Get all users
+ *     description: Fetches a list of all registered users with their IDs and usernames.
+ *     responses:
+ *       200:
+ *         description: Successfully fetched the list of users.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 users:
+ *                   type: array
+ *                   description: A list of users.
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       userID:
+ *                         type: integer
+ *                         description: The ID of the user.
+ *                       username:
+ *                         type: string
+ *                         description: The username of the user.
+ *       500:
+ *         description: Internal server error.
+ */
 // API endpoint to get all users
 app.get('/users', async (req, res) => {
     try {
@@ -1178,6 +1933,67 @@ app.get('/users', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /projects/{projectId}:
+ *   get:
+ *     summary: Get details of a specific project
+ *     description: Fetches details of a specific project along with the list of users assigned to it.
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         description: ID of the project to fetch.
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Successfully fetched the project and its assigned users.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 project:
+ *                   type: object
+ *                   description: The details of the project.
+ *                   properties:
+ *                     projectID:
+ *                       type: integer
+ *                       description: The ID of the project.
+ *                     title:
+ *                       type: string
+ *                       description: The title of the project.
+ *                     description:
+ *                       type: string
+ *                       description: The description of the project.
+ *                     createdBy:
+ *                       type: integer
+ *                       description: The ID of the user who created the project.
+ *                     creationDate:
+ *                       type: string
+ *                       format: date
+ *                       description: The creation date of the project.
+ *                 assignedUsers:
+ *                   type: array
+ *                   description: A list of users assigned to the project.
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       userID:
+ *                         type: integer
+ *                         description: The ID of the user.
+ *                       username:
+ *                         type: string
+ *                         description: The username of the user.
+ *                       role:
+ *                         type: string
+ *                         description: The role of the user in the project.
+ *       404:
+ *         description: Project not found.
+ *       500:
+ *         description: Internal server error.
+ */
 // API endpoint to get a specific project and assigned users
 app.get('/projects/:projectId', async (req, res) => {
     const { projectId } = req.params;
@@ -1233,4 +2049,5 @@ const httpsServer = https.createServer(options, app);
 // start the secure server
 httpsServer.listen(httpsPort, () => {
     console.log(`Secure server running at https://localhost:${httpsPort}`);
+    console.log(`Swagger documentation available at https://localhost:${httpsPort}/api-docs`);
 });
