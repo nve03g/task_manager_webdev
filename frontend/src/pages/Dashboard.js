@@ -70,7 +70,7 @@ const Dashboard = () => {
                                             <li key={task.taskID} className="list-group-item d-flex justify-content-between align-items-center">
                                                 <div>
                                                     <h6>{task.name}</h6>
-                                                    <p>Task Description (make text grey?)</p> 
+                                                    <p>{task.description}</p> {/* make text grey? */}
                                                     <small>
                                                         Assigned to: {task.assignedUsers && task.assignedUsers.length > 0 ? task.assignedUsers.join(', ') : 'No users assigned'}
                                                     </small>

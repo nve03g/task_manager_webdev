@@ -83,6 +83,7 @@ const AddTask = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
         },
         body: JSON.stringify(taskData),
       });
