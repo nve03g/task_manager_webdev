@@ -61,9 +61,23 @@ const AddProject = () => {
             return; // stop submission if description is empty
         }
 
+        // Validate the assignedUsers array before submission
+        const validUsers = assignedUsers
+            .filter((user) => user.userId && ['admin', 'general'].includes(user.role))
+            .map((user) => ({
+                ...user,
+                userId: Number(user.userId), // send userId as a number, not string
+            }));
+
+        if (validUsers.length === 0) {
+            setError('Please assign at least one user to the project.');
+            return;
+        }
+
         try {
             setError(null); // clear previous error (if any)
 
+            console.log('Submitting users:', assignedUsers)
             const response = await fetch('https://localhost:443/projects', {
                 method: 'POST',
                 headers: {
@@ -73,7 +87,7 @@ const AddProject = () => {
                 body: JSON.stringify({
                     title,
                     description: useNoDescription ? 'No Description' : description,
-                    users: assignedUsers
+                    users: validUsers
                 }),
             });
 

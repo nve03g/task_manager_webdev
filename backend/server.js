@@ -451,7 +451,7 @@ app.post('/projects', async (req, res) => {
             for (const { userId, role } of users) {
                 // skip invalid or empty user IDs
                 if (!userId || typeof userId !== 'number') {
-                    //console.warn('Skipping invalid user entry: ${JSON.stringify({ userId, role })}');
+                    // console.warn(`Skipping invalid user entry: ${JSON.stringify({ userId, role })}`);
                     continue;
                 }
                 // validate role
