@@ -2088,6 +2088,33 @@ app.get('/projects/:projectId/users', async (req, res) => {
     }
 });
 
+// API endpoint to get task details from specific project
+app.get('/projects/:projectId/tasks/:taskId', async (req, res) => {
+    const { projectId, taskId } = req.params;
+
+    try {
+        const task = await new Promise((resolve, reject) => {
+            const query = `
+                SELECT t.taskID, t.name, t.description, t.status, t.projectID, t.createdBy, t.creationDate
+                FROM Task t
+                WHERE t.projectID = ? AND t.taskID = ?;`;
+            db.get(query, [projectId, taskId], (err, row) => {
+                if (err) reject(err);
+                resolve(row);
+            });
+        });
+
+        if (!task) {
+            return res.status(404).json({ error: 'Task not found.' });
+        }
+
+        res.status(200).json(task);
+    } catch (error) {
+        console.error('Error fetching task details:', error.message);
+        res.status(500).json({ error: 'Internal server error.' });
+    }
+});
+
 
 // load SSL-certificate files
 const options = {
