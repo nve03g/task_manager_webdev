@@ -1016,7 +1016,7 @@ app.delete('/projects/:projectId', async (req, res) => {
  *                 description: The name of the task.
  *               status:
  *                 type: string
- *                 description: The status of the task (e.g., in progress, A, B).
+ *                 description: The status of the task (e.g., pending, in progress, urgent, complete, not started).
  *               assignedUserIds:
  *                 type: array
  *                 description: An array of user IDs to assign to the task.
@@ -1078,7 +1078,7 @@ app.post('/projects/:projectId/tasks', async (req, res) => {
     }
 
     // validate assigned status
-    const allowedStatuses = ["in progress", "A", "B"]; // CHANGE THESE
+    const allowedStatuses = ["pending", "in progress", "urgent", "complete", "not started"];
     if (!allowedStatuses.includes(status)) {
         return res.status(400).json({ error: `Invalid status. Allowed values are: ${allowedStatuses.join(", ")}.` });
     }
@@ -1209,7 +1209,7 @@ app.post('/projects/:projectId/tasks', async (req, res) => {
  *                 description: The new name of the task.
  *               status:
  *                 type: string
- *                 description: The new status of the task (e.g., pending, in progress, completed).
+ *                 description: The new status of the task (e.g., pending, in progress, urgent, complete, not started).
  *               description:
  *                 type: string
  *                 description: The new description of the task.
@@ -1315,7 +1315,7 @@ app.put('/projects/:projectId/tasks/:taskId', async (req, res) => {
             values.push(name);
         }
         if (status) {
-            const validStatuses = ['pending', 'in progress', 'completed']; // CHECK THIS: welke statussen?
+            const validStatuses = ["pending", "in progress", "urgent", "complete", "not started"];
             if (!validStatuses.includes(status)) {
                 return res.status(400).json({ error: 'Invalid task status.' });
             }
