@@ -1091,7 +1091,7 @@ app.post('/projects/:projectId/tasks', async (req, res) => {
     }
 
     // validate assigned status
-    const allowedStatuses = ["Pending", "In Progress", "Urgent", "Complete", "Not Started"]; 
+    const allowedStatuses = ["Pending", "In Progress", "Urgent", "Complete", "Not Started"];
     if (!allowedStatuses.includes(status)) {
         return res.status(400).json({ error: `Invalid status. Allowed values are: ${allowedStatuses.join(", ")}.` });
     }
@@ -1308,16 +1308,18 @@ app.put('/projects/:projectId/tasks/:taskId', async (req, res) => {
             });
         });
 
+        // console.log('User Role Check:', { isAdmin, isAssigned });
+
         // authorization: only admins or assigned users can update the task
-        if (!isAdmin && !(isAssigned && status && !name)) {
+        if (!isAdmin && !(isAssigned && status && !name && !description)) {
             return res.status(403).json({
                 error: 'Only administrators or assigned users can update the task. Assigned users can only update the status.',
             });
         }
 
         // if a non-admin user tries to update the name, reject the request
-        if (!isAdmin && name) {
-            return res.status(403).json({ error: 'Only administrators can update task name.' });
+        if (!isAdmin && (name || description)) {
+            return res.status(403).json({ error: 'Only administrators can update task name and description.' });
         }
 
         // build update query dynamically, based on provided fields
@@ -2091,6 +2093,7 @@ app.get('/projects/:projectId/users', async (req, res) => {
 // API endpoint to get task details from specific project
 app.get('/projects/:projectId/tasks/:taskId', async (req, res) => {
     const { projectId, taskId } = req.params;
+    const requestingUserId = req.user.id; // extract user ID from request
 
     try {
         const task = await new Promise((resolve, reject) => {
@@ -2099,7 +2102,10 @@ app.get('/projects/:projectId/tasks/:taskId', async (req, res) => {
                 FROM Task t
                 WHERE t.projectID = ? AND t.taskID = ?;`;
             db.get(query, [projectId, taskId], (err, row) => {
-                if (err) reject(err);
+                if (err) {
+                    console.error('Task query error:', err.message);
+                    reject(err);
+                }
                 resolve(row);
             });
         });
@@ -2108,7 +2114,32 @@ app.get('/projects/:projectId/tasks/:taskId', async (req, res) => {
             return res.status(404).json({ error: 'Task not found.' });
         }
 
-        res.status(200).json(task);
+        // determine user role
+        const userRole = await new Promise((resolve, reject) => {
+            const query = `
+                SELECT 
+                    CASE
+                        WHEN pu.role = 'admin' THEN 'admin'
+                        WHEN EXISTS (
+                            SELECT 1
+                            FROM Task_User tu
+                            WHERE tu.taskID = ? AND tu.userID = ?
+                        ) THEN 'general-assigned'
+                        ELSE 'general-unassigned'
+                    END AS role
+                FROM Project_User pu
+                WHERE pu.projectID = ? AND pu.userID = ?;`;
+            db.get(query, [taskId, requestingUserId, projectId, requestingUserId], (err, row) => {
+                if (err) {
+                    console.error('User Role Query Error:', err.message); // Log error
+                    reject(err);
+                }
+                resolve(row ? row.role : 'general-unassigned');
+            });
+        });
+
+        // return task details along with user role
+        res.status(200).json({ ...task, userRole });
     } catch (error) {
         console.error('Error fetching task details:', error.message);
         res.status(500).json({ error: 'Internal server error.' });

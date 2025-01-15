@@ -6,6 +6,7 @@ const EditTask = ({ taskId, projectId, onTaskUpdated, onClose }) => {
     const [taskName, setTaskName] = useState('');
     const [taskDescription, setTaskDescription] = useState('');
     const [status, setStatus] = useState('');
+    const [userRole, setUserRole] = useState(''); // admin, general-assigned, general-unassigned
     const [error, setError] = useState('');
     const [message, setMessage] = useState('');
 
@@ -26,6 +27,7 @@ const EditTask = ({ taskId, projectId, onTaskUpdated, onClose }) => {
                     setTaskName(data.name);
                     setTaskDescription(data.description || '');
                     setStatus(data.status || 'Pending');
+                    setUserRole(data.userRole);
                 } else {
                     setError(data.error || 'Failed to fetch task details.');
                 }
@@ -40,8 +42,11 @@ const EditTask = ({ taskId, projectId, onTaskUpdated, onClose }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        const updatedTask = { name: taskName, description: taskDescription, status };
-
+        const updatedTask = userRole === 'admin'
+            ? { name: taskName, description: taskDescription, status }
+            : { status }; // Only send status for general-assigned users
+        console.log('updated task payload:', updatedTask);
+        
         try {
             const response = await fetch(`https://localhost:443/projects/${projectId}/tasks/${taskId}`, {
                 method: 'PUT',
@@ -96,7 +101,7 @@ const EditTask = ({ taskId, projectId, onTaskUpdated, onClose }) => {
     return (
         <div className="popover-content">
             <h5>Edit Task</h5>
-            {message && <p className='success-message text-success'>{message}</p>}
+            {message && <p className="success-message text-success">{message}</p>}
             {error && <p className="error-message text-danger">{error}</p>}
             <form onSubmit={handleSubmit}>
                 <div className="form-group">
@@ -107,6 +112,7 @@ const EditTask = ({ taskId, projectId, onTaskUpdated, onClose }) => {
                         onChange={(e) => setTaskName(e.target.value)}
                         className="form-control"
                         required
+                        disabled={userRole !== 'admin'} // Only admins can edit the task name
                     />
                 </div>
                 <div className="form-group">
@@ -115,6 +121,7 @@ const EditTask = ({ taskId, projectId, onTaskUpdated, onClose }) => {
                         value={taskDescription}
                         onChange={(e) => setTaskDescription(e.target.value)}
                         className="form-control"
+                        disabled={userRole !== 'admin'} // Only admins can edit the task description
                     ></textarea>
                 </div>
                 <div className="form-group">
@@ -124,6 +131,7 @@ const EditTask = ({ taskId, projectId, onTaskUpdated, onClose }) => {
                         onChange={(e) => setStatus(e.target.value)}
                         className="form-control"
                         required
+                        disabled={userRole === 'general-unassigned'} // Only allow edits if assigned
                     >
                         <option value="Pending">Pending</option>
                         <option value="In Progress">In Progress</option>
@@ -132,16 +140,22 @@ const EditTask = ({ taskId, projectId, onTaskUpdated, onClose }) => {
                         <option value="Not Started">Not Started</option>
                     </select>
                 </div>
-                <button type="submit" className="btn btn-primary mt-2">
+                <button
+                    type="submit"
+                    className="btn btn-primary mt-2"
+                    disabled={userRole === 'general-unassigned'} // Disable for unassigned general users
+                >
                     Save Changes
                 </button>
             </form>
-            <button
-                className="btn btn-danger mt-3"
-                onClick={handleDelete}
-            >
-                Delete Task
-            </button>
+            {userRole === 'admin' && (
+                <button
+                    className="btn btn-danger mt-3"
+                    onClick={handleDelete}
+                >
+                    Delete Task
+                </button>
+            )}
         </div>
     );
 };
