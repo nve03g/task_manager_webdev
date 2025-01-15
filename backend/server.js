@@ -419,6 +419,19 @@ app.post('/projects', async (req, res) => {
     }
 
     try {
+        // check if the project title already exists
+        const existingProject = await new Promise((resolve, reject) => {
+            const query = 'SELECT projectID FROM Project WHERE title = ?';
+            db.get(query, [title], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+
+        if (existingProject) {
+            return res.status(400).json({ error: 'A project with this title already exists.' });
+        }
+
         // start transaction
         // a transaction is a sequence of one or more database operations that are executed as a single unit => either all operations within the transaction are completed or none of them are applied (transaction rollback)
         await new Promise((resolve, reject) => {
