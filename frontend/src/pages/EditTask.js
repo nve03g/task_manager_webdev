@@ -7,6 +7,7 @@ const EditTask = ({ taskId, projectId, onTaskUpdated, onClose }) => {
     const [taskDescription, setTaskDescription] = useState('');
     const [status, setStatus] = useState('');
     const [error, setError] = useState('');
+    const [message, setMessage] = useState('');
 
     // fetch task details to pre-fill the form
     useEffect(() => {
@@ -20,12 +21,11 @@ const EditTask = ({ taskId, projectId, onTaskUpdated, onClose }) => {
                 });
 
                 const data = await response.json();
-                console.log('Task details response:', data);
 
                 if (response.ok) {
                     setTaskName(data.name);
                     setTaskDescription(data.description || '');
-                    setStatus(data.status);
+                    setStatus(data.status || 'Pending');
                 } else {
                     setError(data.error || 'Failed to fetch task details.');
                 }
@@ -52,9 +52,6 @@ const EditTask = ({ taskId, projectId, onTaskUpdated, onClose }) => {
                 body: JSON.stringify(updatedTask),
             });
 
-            const data = await response.json();
-            console.log('data:', data);
-
             if (response.ok) {
                 onTaskUpdated(); // callback to refresh task list
                 onClose(); // close the popover
@@ -63,14 +60,44 @@ const EditTask = ({ taskId, projectId, onTaskUpdated, onClose }) => {
                 setError(errorData.message || 'Failed to update task.');
             }
         } catch (err) {
+            console.error('Error updating task:', err);
             setError('An error occurred while updating the task.');
+        }
+    };
+
+    const handleDelete = async () => {
+        if (window.confirm('Are you sure you want to delete this task? This action cannot be undone.')) {
+            try {
+                const response = await fetch(`https://localhost:443/projects/${projectId}/tasks/${taskId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        Authorization: `Bearer ${authToken}`,
+                    },
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    setMessage('Task deleted successfully.');
+                    setTimeout(() => {
+                        onTaskUpdated();
+                        onClose();
+                    }, 1000);
+                } else {
+                    setError(data.error || 'Failed to delete task.');
+                }
+            } catch (err) {
+                console.error('Error Deleting Task:', err);
+                setError('An error occurred while deleting the task.');
+            }
         }
     };
 
     return (
         <div className="popover-content">
             <h5>Edit Task</h5>
-            {error && <p className="error-message">{error}</p>}
+            {message && <p className='success-message text-success'>{message}</p>}
+            {error && <p className="error-message text-danger">{error}</p>}
             <form onSubmit={handleSubmit}>
                 <div className="form-group">
                     <label>Task Name</label>
@@ -109,6 +136,12 @@ const EditTask = ({ taskId, projectId, onTaskUpdated, onClose }) => {
                     Save Changes
                 </button>
             </form>
+            <button
+                className="btn btn-danger mt-3"
+                onClick={handleDelete}
+            >
+                Delete Task
+            </button>
         </div>
     );
 };
