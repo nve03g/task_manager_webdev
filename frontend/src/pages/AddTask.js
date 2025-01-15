@@ -137,7 +137,9 @@ const AddTask = () => {
             >
               <option value="Pending">Pending</option>
               <option value="In Progress">In Progress</option>
-              <option value="Completed">Completed</option>
+              <option value="Urgent">Urgent</option>
+              <option value="Complete">Complete</option>
+              <option value="Not Started">Not Started</option>
             </select>
           </div>
           <div className="form-group mb-3">

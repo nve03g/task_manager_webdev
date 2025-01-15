@@ -10,3 +10,14 @@ je kan een taakloos project hebben, maar geen projectloze taken
 elke taak hoort tot exact één project
 een taak kan toegewezen zijn aan meerdere users, maar altijd minstens één (niet per se de creator van de taak, of wel?)
 een project bestaat uit minstens één user (de creator)
+
+
+
+task statusses:
+["Pending", "In Progress", "Urgent", "Complete", "Not Started"]
+
+<option value="Pending">Pending</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Urgent">Urgent</option>
+              <option value="Complete">Complete</option>
+              <option value="Not Started">Not Started</option>

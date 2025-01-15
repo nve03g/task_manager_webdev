@@ -1091,7 +1091,7 @@ app.post('/projects/:projectId/tasks', async (req, res) => {
     }
 
     // validate assigned status
-    const allowedStatuses = ["pending", "in progress", "urgent", "complete", "not started"];
+    const allowedStatuses = ["Pending", "In Progress", "Urgent", "Complete", "Not Started"]; 
     if (!allowedStatuses.includes(status)) {
         return res.status(400).json({ error: `Invalid status. Allowed values are: ${allowedStatuses.join(", ")}.` });
     }
@@ -1328,7 +1328,7 @@ app.put('/projects/:projectId/tasks/:taskId', async (req, res) => {
             values.push(name);
         }
         if (status) {
-            const validStatuses = ["pending", "in progress", "urgent", "complete", "not started"];
+            const validStatuses = ["Pending", "In Progress", "Urgent", "Complete", "Not Started"];
             if (!validStatuses.includes(status)) {
                 return res.status(400).json({ error: 'Invalid task status.' });
             }
@@ -1775,7 +1775,7 @@ app.get('/projects-with-tasks', checkTokenBlacklist, async (req, res) => {
             map[task.projectID].push({ ...task, assignedUsers });
             return map;
         }, {});
-    
+
         // Attach tasks to their respective projects
         const projectsWithTasks = projects.map((project) => ({
             ...project,
