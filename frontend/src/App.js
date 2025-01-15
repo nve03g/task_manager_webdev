@@ -11,6 +11,7 @@ import SignUp from './pages/SignUp';
 import PrivateRoute from './PrivateRoute';
 import AddProject from './pages/AddProject';
 import EditProject from './pages/EditProject';
+import AddTask from './pages/AddTask';
 
 
 function App() {
@@ -59,6 +60,16 @@ function App() {
             <PrivateRoute>
               <Navbar />
               <EditProject />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/add-task/:projectId"
+          element={
+            <PrivateRoute>
+              <Navbar />
+              <AddTask />
             </PrivateRoute>
           }
         />

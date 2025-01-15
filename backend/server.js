@@ -1755,29 +1755,45 @@ app.get('/projects-with-tasks', checkTokenBlacklist, async (req, res) => {
                     t.status, 
                     t.description, 
                     t.creationDate, 
-                    t.projectID
+                    t.projectID,
+                    GROUP_CONCAT(u.username) AS assignedUsers
                 FROM Task t
-                JOIN Task_User tu ON t.taskID = tu.taskID
+                LEFT JOIN Task_User tu ON t.taskID = tu.taskID
+                LEFT JOIN User u ON tu.userID = u.userID
                 WHERE t.projectID IN (${projectIds.map(() => '?').join(',')})
-                AND tu.userID = ?`;
-            db.all(query, [...projectIds, userId], (err, rows) => {
+                GROUP BY t.taskID`;
+            db.all(query, [...projectIds], (err, rows) => {
                 if (err) reject(err);
                 resolve(rows);
             });
         });
 
-        // group tasks by projectID
+        // parse assigned users into an array and group tasks by projectID
         const projectTaskMap = tasks.reduce((map, task) => {
+            const assignedUsers = task.assignedUsers ? task.assignedUsers.split(',') : [];
             if (!map[task.projectID]) map[task.projectID] = [];
-            map[task.projectID].push(task);
+            map[task.projectID].push({ ...task, assignedUsers });
             return map;
         }, {});
-
-        // attach tasks to their respective projects
-        const projectsWithTasks = projects.map(project => ({
+    
+        // Attach tasks to their respective projects
+        const projectsWithTasks = projects.map((project) => ({
             ...project,
-            tasks: projectTaskMap[project.projectID] || []
+            tasks: projectTaskMap[project.projectID] || [],
         }));
+
+        // // group tasks by projectID
+        // const projectTaskMap = tasks.reduce((map, task) => {
+        //     if (!map[task.projectID]) map[task.projectID] = [];
+        //     map[task.projectID].push(task);
+        //     return map;
+        // }, {});
+
+        // // attach tasks to their respective projects
+        // const projectsWithTasks = projects.map(project => ({
+        //     ...project,
+        //     tasks: projectTaskMap[project.projectID] || []
+        // }));
 
         res.status(200).json({ projects: projectsWithTasks });
     } catch (error) {
@@ -2045,6 +2061,29 @@ app.get('/projects/:projectId', async (req, res) => {
         res.status(200).json({ project, assignedUsers });
     } catch (error) {
         console.error('Error fetching project details:', error.message);
+        res.status(500).json({ error: 'Internal server error.' });
+    }
+});
+
+// API endpoint to get users for a specific project
+app.get('/projects/:projectId/users', async (req, res) => {
+    const { projectId } = req.params;
+
+    try {
+        const users = await new Promise((resolve, reject) => {
+            const query = `SELECT u.userID, u.username
+                FROM User u
+                JOIN Project_User pu ON u.userID = pu.userID
+                WHERE pu.projectID = ?;`;
+            db.all(query, [projectId], (err, rows) => {
+                if (err) reject(err);
+                resolve(rows);
+            });
+        });
+
+        res.status(200).json(users);
+    } catch (error) {
+        console.error('Error fetching project users:', error.message);
         res.status(500).json({ error: 'Internal server error.' });
     }
 });

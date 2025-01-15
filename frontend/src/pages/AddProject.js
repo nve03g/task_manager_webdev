@@ -69,10 +69,6 @@ const AddProject = () => {
                 userId: Number(user.userId), // send userId as a number, not string
             }));
 
-        if (validUsers.length === 0) {
-            setError('Please assign at least one user to the project.');
-            return;
-        }
 
         try {
             setError(null); // clear previous error (if any)

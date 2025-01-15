@@ -16,7 +16,6 @@ const EditProject = () => {
     const [users, setUsers] = useState([]); // list of all users from the database
     const [alreadyAssignedUsers, setAlreadyAssignedUsers] = useState([]); // users already assigned to the project
     const [newlyAssignedUsers, setNewlyAssignedUsers] = useState([{ userId: '', role: 'general' }]); // users newly assigned to the project
-    const [editingRole, setEditingRole] = useState(null); // to track which user's role is being edited
     const [message, setMessage] = useState(null);
     const navigate = useNavigate();
 

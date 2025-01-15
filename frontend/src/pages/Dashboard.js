@@ -63,18 +63,25 @@ const Dashboard = () => {
                                     Created by {project.createdBy} on{' '}
                                     {new Date(project.creationDate).toLocaleDateString()}
                                 </p>
-                                <h6>Tasks</h6>
+                                <h6>Tasks:</h6>
                                 {project.tasks.length > 0 ? (
                                     <ul className="list-group">
                                         {project.tasks.map((task) => (
                                             <li key={task.taskID} className="list-group-item d-flex justify-content-between align-items-center">
-                                                <span>{task.name}</span>
+                                                <div>
+                                                    <h6>{task.name}</h6>
+                                                    <p>Task Description (make text grey?)</p> 
+                                                    <small>
+                                                        Assigned to: {task.assignedUsers && task.assignedUsers.length > 0 ? task.assignedUsers.join(', ') : 'No users assigned'}
+                                                    </small>
+                                                </div>
+                                                {/* <span>{task.name}</span> */}
                                                 <span className="badge bg-primary">{task.status}</span>
                                             </li>
                                         ))}
                                     </ul>
                                 ) : (
-                                    <p>No tasks available.</p>
+                                    <p>No tasks in this project.</p>
                                 )}
                             </div>
                             <div className="card-footer d-flex justify-content-between">
