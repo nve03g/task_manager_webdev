@@ -2146,6 +2146,47 @@ app.get('/projects/:projectId/tasks/:taskId', async (req, res) => {
     }
 });
 
+// API endpoint to check if the requesting user is an admin in the project
+app.get('/projects/:projectId/check-admin', async (req, res) => {
+    const { projectId } = req.params;
+    const token = req.headers.authorization?.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({ error: 'Authorization token is required.' });
+    }
+
+    try {
+        // Decode the JWT token to get the user ID
+        const decodedToken = jwt.verify(token, JWT_SECRET_KEY);
+        const currentUserId = decodedToken.id;
+
+        // Query to check if the user is an admin in the project
+        const isAdmin = await new Promise((resolve, reject) => {
+            const query = `
+                SELECT role
+                FROM Project_User
+                WHERE projectID = ? AND userID = ? AND role = 'admin';
+            `;
+            db.get(query, [projectId, currentUserId], (err, row) => {
+                if (err) reject(err);
+                resolve(!!row); // Return true if the row exists
+            });
+        });
+
+        // Respond with the admin status
+        res.status(200).json({ isAdmin });
+    } catch (error) {
+        console.error('Error checking admin status:', error.message);
+
+        if (error.name === 'JsonWebTokenError') {
+            return res.status(401).json({ error: 'Invalid authorization token.' });
+        }
+
+        res.status(500).json({ error: 'Internal server error.' });
+    }
+});
+
+
 
 // load SSL-certificate files
 const options = {

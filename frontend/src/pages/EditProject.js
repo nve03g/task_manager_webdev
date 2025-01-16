@@ -72,7 +72,12 @@ const EditProject = () => {
                     const currentUserRole = data.assignedUsers.find(
                         (user) => user.userID === currentUserId
                     )?.role;
-                    setIsAdmin(currentUserRole === 'admin');
+
+                    if (currentUserRole === 'admin') {
+                        setIsAdmin(true);
+                    } else {
+                        setError('You do not have permission to edit this project.');
+                    }
                 } else {
                     throw new Error(data.error || 'Failed to fetch project details.');
                 }
@@ -85,9 +90,19 @@ const EditProject = () => {
         fetchProjectDetails();
     }, [authToken, projectId]);
 
+    useEffect(() => {
+        if (error) {
+            const redirectTimeout = setTimeout(() => navigate('/dashboard'), 2000);
+            return () => clearTimeout(redirectTimeout); // Cleanup timeout on component unmount
+        }
+    }, [error, navigate]);
+
     // redirect or show a message if the user is not an admin in the project
-    if (!isAdmin) {
-        return <div className="alert alert-danger">You do not have permission to edit this project.</div>;
+    if (!isAdmin && error) {
+        return (<div className="alert alert-danger">
+            {error}
+            <p>Redirecting to the dashboard...</p>
+        </div>);
     }
 
     // for already assigned users
@@ -390,15 +405,15 @@ const EditProject = () => {
                     </button>
 
                     {/* Delete Project */}
-                        {isAdmin && (
-                            <button
-                                type="button"
-                                onClick={handleDeleteProject}
-                                className="btn btn-danger"
-                            >
-                                Delete Project
-                            </button>
-                        )}
+                    {isAdmin && (
+                        <button
+                            type="button"
+                            onClick={handleDeleteProject}
+                            className="btn btn-danger"
+                        >
+                            Delete Project
+                        </button>
+                    )}
                 </div>
             </form>
         </div>
