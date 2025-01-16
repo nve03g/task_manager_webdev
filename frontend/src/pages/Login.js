@@ -41,28 +41,32 @@ const Login = () => {
 
     return (
         <div className="login-container">
-            <h1>Login</h1>
-            {error && <p className="error-message">{error}</p>}
-            <form onSubmit={handleSubmit}>
-                <input
-                    type="text"
-                    placeholder="Username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    required
-                />
-                <input
-                    type="password"
-                    placeholder="Password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                />
-                <button type="submit">Login</button>
-            </form>
-            <p>
-                Don't have an account? <Link to="/signup">Sign up here</Link>
-            </p>
+            <div className="login-box">
+                <h1>Login</h1>
+                {error && <p className="error-message">{error}</p>}
+                <form onSubmit={handleSubmit}>
+                    <input
+                        type="text"
+                        placeholder="Username"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        required
+                        className="login-input"
+                    />
+                    <input
+                        type="password"
+                        placeholder="Password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        className="login-input"
+                    />
+                    <button type="submit" className="login-button">Login</button>
+                </form>
+                <p className="signup-link">
+                    Don't have an account? <Link to="/signup">Sign up here</Link>
+                </p>
+            </div>
         </div>
     );
 };

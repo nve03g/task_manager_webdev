@@ -52,7 +52,7 @@ const SignUp = () => {
 
   return (
     <div className="signup-container">
-      <h1>Sign Up</h1>
+      <h1 className="signup-title">Sign Up</h1> {/* Title directly inside the main container */}
       {message && <p className="success-message">{message}</p>}
       {error && <p className="error-message">{error}</p>}
       <form onSubmit={handleSubmit} className="signup-form">

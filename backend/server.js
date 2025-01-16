@@ -2067,6 +2067,40 @@ app.get('/projects/:projectId', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /projects/{projectId}/users:
+ *   get:
+ *     summary: Get users assigned to a project
+ *     description: Fetches a list of users assigned to the specified project.
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         description: The ID of the project.
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Successfully fetched the list of users for the project.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   userID:
+ *                     type: integer
+ *                     description: The ID of the user.
+ *                   username:
+ *                     type: string
+ *                     description: The username of the user.
+ *       404:
+ *         description: Project not found.
+ *       500:
+ *         description: Internal server error.
+ */
 // API endpoint to get users for a specific project
 app.get('/projects/:projectId/users', async (req, res) => {
     const { projectId } = req.params;
@@ -2090,6 +2124,64 @@ app.get('/projects/:projectId/users', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /projects/{projectId}/tasks/{taskId}:
+ *   get:
+ *     summary: Get task details from a project
+ *     description: Fetches details of a specific task within a project.
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         description: The ID of the project the task belongs to.
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: taskId
+ *         required: true
+ *         description: The ID of the task.
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Successfully fetched task details.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 taskID:
+ *                   type: integer
+ *                   description: The ID of the task.
+ *                 name:
+ *                   type: string
+ *                   description: The name of the task.
+ *                 description:
+ *                   type: string
+ *                   description: The description of the task.
+ *                 status:
+ *                   type: string
+ *                   description: The status of the task.
+ *                 projectID:
+ *                   type: integer
+ *                   description: The ID of the project the task belongs to.
+ *                 createdBy:
+ *                   type: integer
+ *                   description: The ID of the user who created the task.
+ *                 creationDate:
+ *                   type: string
+ *                   format: date
+ *                   description: The creation date of the task.
+ *                 userRole:
+ *                   type: string
+ *                   description: The role of the authenticated user in the project.
+ *                   example: admin
+ *       404:
+ *         description: Task or project not found.
+ *       500:
+ *         description: Internal server error.
+ */
 // API endpoint to get task details from specific project
 app.get('/projects/:projectId/tasks/:taskId', async (req, res) => {
     const { projectId, taskId } = req.params;
@@ -2146,6 +2238,38 @@ app.get('/projects/:projectId/tasks/:taskId', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /projects/{projectId}/check-admin:
+ *   get:
+ *     summary: Check if the user is an admin in the project
+ *     description: Verifies whether the authenticated user has admin rights for the specified project.
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         description: The ID of the project.
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Successfully verified admin status.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 isAdmin:
+ *                   type: boolean
+ *                   description: Indicates if the user is an admin.
+ *                   example: true
+ *       401:
+ *         description: Unauthorized. The token is missing or invalid.
+ *       404:
+ *         description: Project not found.
+ *       500:
+ *         description: Internal server error.
+ */
 // API endpoint to check if the requesting user is an admin in the project
 app.get('/projects/:projectId/check-admin', async (req, res) => {
     const { projectId } = req.params;
