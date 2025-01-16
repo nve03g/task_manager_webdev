@@ -17,6 +17,15 @@ services:
     depends_on:
       - redis
 
+  db:
+    image: nouchka/sqlite3:latest
+    # container_name: sqlite3
+    volumes:
+      - ./backend:/data
+    # environment:
+    #   SQLITE_DATABASE: /backend/database.db
+    command: sqlite3 /data/databaes.db
+
   frontend:
     build:
       context: ./frontend
