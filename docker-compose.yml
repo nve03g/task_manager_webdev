@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "443:443"
+    volumes:
+      - ./backend:/usr/src/app
+      - ./private-key.pem:/usr/src/app/private-key.pem
+      - ./public-cert.pem:/usr/src/app/public-cert.pem
+    environment:
+      NODE_ENV: production
+      JWT_SECRET_KEY: 'UTe3aQrD.wUpmg4@qANvyw'
+    depends_on:
+      - redis
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+
+  redis:
+    image: redis:alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    restart: always
+
+volumes:
+  sqlite_data:
